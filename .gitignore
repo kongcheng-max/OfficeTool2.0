@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/dataSources/
+.idea/dataSources.local.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.pyc
+__pycache__/
+
+# Uploads (keep structure, ignore content)
+uploads/*
+!uploads/.gitkeep
