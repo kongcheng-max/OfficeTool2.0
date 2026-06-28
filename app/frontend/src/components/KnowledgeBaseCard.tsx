@@ -15,6 +15,7 @@ export interface KnowledgeBaseCardProps {
   createdAt: string;
   onEnter: (id: string) => void;
   onManage: (id: string) => void;
+  onGraph?: (id: string) => void;
 }
 
 const KnowledgeBaseCard: React.FC<KnowledgeBaseCardProps> = ({
@@ -27,6 +28,7 @@ const KnowledgeBaseCard: React.FC<KnowledgeBaseCardProps> = ({
   createdAt,
   onEnter,
   onManage,
+  onGraph,
 }) => {
   return (
     <Card
@@ -39,6 +41,13 @@ const KnowledgeBaseCard: React.FC<KnowledgeBaseCardProps> = ({
         <span key="docs" onClick={() => onManage(id)}>
           文档管理
         </span>,
+        ...(onGraph
+          ? [
+              <span key="graph" onClick={() => onGraph(id)}>
+                知识图谱
+              </span>,
+            ]
+          : []),
       ]}
     >
       <Card.Meta

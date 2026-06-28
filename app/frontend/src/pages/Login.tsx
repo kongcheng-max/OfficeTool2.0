@@ -22,8 +22,8 @@ const Login: React.FC = () => {
       }
       message.success(activeTab === 'login' ? '登录成功' : '注册成功');
       navigate('/');
-    } catch {
-      // error handled by axios interceptor
+    } catch (e: any) {
+      console.debug('[BUG-011] Login operation failed:', e?.message || e);
     }
   };
 

@@ -71,8 +71,9 @@ class VectorStore:
         logger.info(f"Milvus Collection 已创建: {self.COLLECTION_NAME}, dim={self.DIM}")
 
     def get_collection(self) -> Collection:
-        """获取 Collection 对象"""
+        """获取 Collection 对象（自动创建如果不存在）"""
         self.connect()
+        self.create_collection_if_not_exists()
         return Collection(name=self.COLLECTION_NAME)
 
     def ensure_index(self):

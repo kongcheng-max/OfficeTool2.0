@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -86,6 +86,52 @@ class Document(Base):
 
     # 关系
     knowledge_base = relationship("KnowledgeBase", back_populates="documents")
+    tags = relationship("Tag", secondary="document_tags", back_populates="documents")
 
     def __repr__(self):
         return f"<Document(id={self.id}, filename={self.filename}, status={self.status})>"
+
+
+# === 多对多：文档-标签关联表 ===
+
+document_tags = Table(
+    "document_tags",
+    Base.metadata,
+    Column("document_id", ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Tag(Base):
+    """标签表"""
+    __tablename__ = "tags"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    color: Mapped[str] = mapped_column(String(16), default="#1890ff")
+    kb_id: Mapped[str] = mapped_column(String(32), ForeignKey("knowledge_bases.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    # 关系
+    documents = relationship("Document", secondary="document_tags", back_populates="tags")
+
+    def __repr__(self):
+        return f"<Tag(id={self.id}, name={self.name})>"
+
+
+class DocumentVersion(Base):
+    """文档版本追踪表"""
+    __tablename__ = "document_versions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    document_id: Mapped[str] = mapped_column(String(32), ForeignKey("documents.id"), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    file_path: Mapped[str] = mapped_column(String(512), default="")
+    file_size: Mapped[int] = mapped_column(Integer, default=0)
+    file_md5: Mapped[str] = mapped_column(String(64), default="")
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    change_note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    def __repr__(self):
+        return f"<DocumentVersion(id={self.id}, doc={self.document_id}, v{self.version})>"

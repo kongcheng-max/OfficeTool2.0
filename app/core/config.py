@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from pydantic_settings import BaseSettings
+from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -14,7 +15,11 @@ class Settings(BaseSettings):
     APP_NAME: str = "OfficeTool"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = True
-    SECRET_KEY: str = "change-me-in-production-use-a-real-secret"
+    SECRET_KEY: str = ""  # 生产环境必须通过环境变量设置
+
+    # === CORS ===
+    # 允许的跨域来源列表；开发环境默认允许 Vite 前端
+    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
     # === 数据库 ===
     DATABASE_URL: str = "postgresql+asyncpg://officetool:officetool@localhost:5432/officetool"
@@ -25,8 +30,8 @@ class Settings(BaseSettings):
 
     # === MinIO ===
     MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_ACCESS_KEY: str = ""  # 生产环境必须通过环境变量设置
+    MINIO_SECRET_KEY: str = ""  # 生产环境必须通过环境变量设置
     MINIO_BUCKET: str = "officetool-documents"
     MINIO_SECURE: bool = False
 
@@ -34,6 +39,14 @@ class Settings(BaseSettings):
     MILVUS_HOST: str = "localhost"
     MILVUS_PORT: int = 19530
     MILVUS_COLLECTION: str = "officetool_chunks"
+
+    # === Elasticsearch ===
+    ELASTICSEARCH_URL: str = "http://localhost:9200"
+
+    # === Neo4j ===
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "password"
 
     # === JWT ===
     JWT_ALGORITHM: str = "HS256"
@@ -64,9 +77,20 @@ class Settings(BaseSettings):
     # === 文件存储路径 ===
     UPLOAD_DIR: str = "./uploads"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+    @model_validator(mode="after")
+    def validate_security_settings(self):
+        """Raise a clear error if SECRET_KEY is empty in non-debug / production mode."""
+        if not self.SECRET_KEY and not self.DEBUG:
+            raise ValueError(
+                "SECRET_KEY must be set via environment variable when DEBUG=False. "
+                "Generate a random key: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        return self
 
     @classmethod
     def from_yaml(cls, yaml_path: str = "config.yaml") -> "Settings":

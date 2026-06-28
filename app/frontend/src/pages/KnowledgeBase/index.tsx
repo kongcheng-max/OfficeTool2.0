@@ -9,16 +9,32 @@ import {
   Form,
   Spin,
   Empty,
+  Space,
+  Tag,
+  List,
   Popconfirm,
+  ColorPicker,
   App,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  TagOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useKBStore } from '../../stores/kbStore';
 import { createKB, deleteKB, type KnowledgeBaseItem } from '../../api/kb';
+import {
+  getTags,
+  getTagStats,
+  createTag,
+  deleteTag as deleteTagApi,
+  type TagItem,
+  type TagStat,
+} from '../../api/tag';
 import KnowledgeBaseCard from '../../components/KnowledgeBaseCard';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const KnowledgeBase: React.FC = () => {
@@ -28,6 +44,15 @@ const KnowledgeBase: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
+
+  // ── Tag management state ─────────────────────────────
+  const [tagModalKbId, setTagModalKbId] = useState<string | null>(null);
+  const [tagModalKbName, setTagModalKbName] = useState('');
+  const [tagList, setTagList] = useState<TagItem[]>([]);
+  const [tagStats, setTagStats] = useState<TagStat[]>([]);
+  const [tagLoading, setTagLoading] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#1890ff');
 
   useEffect(() => {
     fetchList();
@@ -54,6 +79,55 @@ const KnowledgeBase: React.FC = () => {
       fetchList();
     } catch {
       // handled by interceptor
+    }
+  };
+
+  // ── Tag management ───────────────────────────────────
+
+  const openTagManager = async (kbId: string, kbName: string) => {
+    setTagModalKbId(kbId);
+    setTagModalKbName(kbName);
+    setTagLoading(true);
+    try {
+      const [items, stats] = await Promise.all([
+        getTags(kbId),
+        getTagStats(kbId),
+      ]);
+      setTagList(items);
+      setTagStats(stats);
+    } catch {
+      // handled
+    }
+    setTagLoading(false);
+  };
+
+  const handleCreateTag = async () => {
+    if (!tagModalKbId || !newTagName.trim()) return;
+    try {
+      await createTag(tagModalKbId, { name: newTagName.trim(), color: newTagColor });
+      message.success('标签创建成功');
+      setNewTagName('');
+      // refresh
+      const [items, stats] = await Promise.all([
+        getTags(tagModalKbId),
+        getTagStats(tagModalKbId),
+      ]);
+      setTagList(items);
+      setTagStats(stats);
+    } catch {
+      // handled
+    }
+  };
+
+  const handleDeleteTag = async (tagId: string) => {
+    if (!tagModalKbId) return;
+    try {
+      await deleteTagApi(tagModalKbId, tagId);
+      message.success('标签已删除');
+      setTagList((prev) => prev.filter((t) => t.id !== tagId));
+      setTagStats((prev) => prev.filter((t) => t.id !== tagId));
+    } catch {
+      // handled
     }
   };
 
@@ -97,12 +171,23 @@ const KnowledgeBase: React.FC = () => {
                 createdAt={kb.created_at}
                 onEnter={(id) => navigate(`/kb/${id}/chat`)}
                 onManage={(id) => navigate(`/kb/${id}/documents`)}
+                onGraph={(id) => navigate(`/kb/${id}/graph`)}
               />
+              <div style={{ marginTop: 8, textAlign: 'center' }}>
+                <Button
+                  size="small"
+                  icon={<TagOutlined />}
+                  onClick={() => openTagManager(kb.id, kb.name)}
+                >
+                  标签管理
+                </Button>
+              </div>
             </Col>
           ))}
         </Row>
       )}
 
+      {/* ── Create KB Modal ── */}
       <Modal
         title="创建知识库"
         open={modalOpen}
@@ -130,6 +215,99 @@ const KnowledgeBase: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* ── Tag Management Modal ── */}
+      <Modal
+        title={
+          <Space>
+            <TagOutlined />
+            <span>标签管理 — {tagModalKbName}</span>
+          </Space>
+        }
+        open={!!tagModalKbId}
+        onCancel={() => setTagModalKbId(null)}
+        footer={null}
+        width={520}
+        destroyOnClose
+      >
+        {tagLoading ? (
+          <Spin style={{ display: 'block', padding: 40 }} />
+        ) : (
+          <div>
+            {/* Create tag */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <ColorPicker
+                value={newTagColor}
+                onChange={(_, hex) => setNewTagColor(hex)}
+                size="small"
+              />
+              <Input
+                placeholder="新标签名称"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                onPressEnter={handleCreateTag}
+                maxLength={20}
+                style={{ flex: 1 }}
+              />
+              <Button
+                type="primary"
+                size="small"
+                onClick={handleCreateTag}
+                disabled={!newTagName.trim()}
+              >
+                创建
+              </Button>
+            </div>
+
+            {/* Tag stats list */}
+            {tagStats.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无标签，创建第一个吧"
+              />
+            ) : (
+              <List
+                size="small"
+                dataSource={tagStats}
+                renderItem={(item) => (
+                  <List.Item
+                    actions={[
+                      <Popconfirm
+                        key="del"
+                        title="删除此标签？"
+                        onConfirm={() => handleDeleteTag(item.id)}
+                        okText="删除"
+                        cancelText="取消"
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                        />
+                      </Popconfirm>,
+                    ]}
+                  >
+                    <Space>
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: item.color,
+                          display: 'inline-block',
+                        }}
+                      />
+                      <Text>{item.name}</Text>
+                      <Tag>{item.document_count} 篇文档</Tag>
+                    </Space>
+                  </List.Item>
+                )}
+              />
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

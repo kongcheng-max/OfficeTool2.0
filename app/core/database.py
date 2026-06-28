@@ -7,10 +7,13 @@ from core.config import settings
 
 # === 数据库引擎 ===
 if settings.USE_SQLITE:
-    DATABASE_URL = "sqlite+aiosqlite:///./officetool_dev.db"
+    # 支持环境变量覆盖 DATABASE_URL，测试时可用 ":memory:" 避免文件锁问题
+    import os as _os
+    _db_url = _os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./officetool_dev.db")
     engine = create_async_engine(
-        DATABASE_URL,
+        _db_url,
         echo=settings.DEBUG,
+        connect_args={"check_same_thread": False},
     )
 else:
     engine = create_async_engine(

@@ -3,6 +3,7 @@
 from typing import List
 
 import fitz  # PyMuPDF
+from loguru import logger
 
 from engine.parser.base import BaseParser, Chunk
 
@@ -30,6 +31,26 @@ class PDFParser(BaseParser):
                     },
                     chunk_type="text",
                 ))
+            else:
+                # 扫描版 PDF 无文字层 → OCR 回退
+                logger.warning(f"第{page_num}页无文本层，启用 OCR 回退")
+                try:
+                    from engine.parser.ocr import OCRParser
+                    ocr = OCRParser()
+                    pix = page.get_pixmap(dpi=200)
+                    img_bytes = pix.tobytes("png")
+                    ocr_chunks = await ocr.parse_image_bytes(
+                        img_bytes, f"{original_filename}#page{page_num}"
+                    )
+                    for c in ocr_chunks:
+                        c.metadata["ocr_fallback"] = True
+                        c.metadata["page"] = page_num
+                        c.metadata["source"] = original_filename
+                        c.metadata["parser_name"] = self.name
+                        c.metadata["chunk_index"] = len(chunks)
+                        chunks.append(c)
+                except Exception as e:
+                    logger.warning(f"OCR 回退失败 page={page_num}: {e}")
 
             # 表格检测与提取
             tables = page.find_tables()

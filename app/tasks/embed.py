@@ -15,14 +15,10 @@ def _get_db_session():
 
 @celery_app.task(name="embed_document", bind=True, max_retries=2, default_retry_delay=60)
 def embed_document(self, doc_id: str):
-    """异步 Embedding：读取解析结果 → 分块 → 向量化 → 写入 Milvus"""
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+    """异步 Embedding：读取解析结果 → 分块 → 向量化 → 写入 Milvus + ES"""
+    from tasks.celery_app import run_async_in_worker
     try:
-        result = loop.run_until_complete(_async_embed(doc_id))
-        return result
+        return run_async_in_worker(lambda: _async_embed(doc_id))
     except Exception as exc:
         task_logger.error(f"Embedding 任务失败 doc_id={doc_id}: {exc}")
         raise self.retry(exc=exc)
@@ -74,22 +70,33 @@ async def _async_embed(doc_id: str) -> dict:
                 return {"status": "error", "error": f"Embedding 模型不可用: {e}"}
 
             # 4. 写入 Milvus
+            records = []
+            for i, chunk in enumerate(split_chunks):
+                records.append({
+                    "doc_id": doc.id,
+                    "kb_id": doc.kb_id,
+                    "chunk_text": chunk["content"],
+                    "chunk_index": chunk["metadata"].get("chunk_index", i),
+                    "metadata_json": json.dumps(chunk["metadata"], ensure_ascii=False),
+                    "embedding": embeddings[i],
+                })
+
+            milvus_ok = False
             try:
-                records = []
-                for i, chunk in enumerate(split_chunks):
-                    records.append({
-                        "doc_id": doc.id,
-                        "kb_id": doc.kb_id,
-                        "chunk_text": chunk["content"],
-                        "chunk_index": chunk["metadata"].get("chunk_index", i),
-                        "metadata_json": json.dumps(chunk["metadata"], ensure_ascii=False),
-                        "embedding": embeddings[i],
-                    })
                 vector_store.insert(records)
                 task_logger.info(f"Milvus 写入完成: doc_id={doc_id}, count={len(records)}")
+                milvus_ok = True
             except Exception as e:
                 task_logger.warning(f"Milvus 写入失败（可能未启动）: {e}")
-                return {"status": "partial", "error": str(e)}
+
+            # 5. 写入 Elasticsearch（BM25 检索）
+            try:
+                from engine.rag.es_store import es_store
+                await es_store.index_chunks(records)
+                task_logger.info(f"ES 写入完成: doc_id={doc_id}")
+            except Exception as e:
+                task_logger.warning(f"ES 写入失败（可能未启动）: {e}")
 
             task_logger.info(f"Embedding 完成: doc_id={doc_id}")
-            return {"status": "done", "chunks": len(split_chunks)}
+            status = "done" if milvus_ok else "partial"
+            return {"status": status, "chunks": len(split_chunks)}

@@ -1,14 +1,16 @@
 import React from 'react';
-import { Layout, Menu, Avatar, Dropdown, Button } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, Breadcrumb } from 'antd';
 import {
   DashboardOutlined,
   MessageOutlined,
   BookOutlined,
   LogoutOutlined,
   UserOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useKBStore } from '../stores/kbStore';
 
 const { Header, Sider, Content } = Layout;
 
@@ -33,6 +35,32 @@ const AppLayout: React.FC = () => {
     : location.pathname === '/'
       ? '/'
       : '';
+
+  // Breadcrumb generation
+  const kbList = useKBStore((s) => s.list);
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const breadcrumbItems: { title: React.ReactNode }[] = [
+    { title: <Link to="/"><HomeOutlined /> 首页</Link> },
+  ];
+  if (pathParts[0] === 'kb') {
+    breadcrumbItems.push({ title: <Link to="/kb/manage">知识库管理</Link> });
+    if (pathParts[1] === 'manage') {
+      // already at kb/manage
+    } else if (pathParts[1] && pathParts[2]) {
+      const kb = kbList.find((k) => k.id === pathParts[1]);
+      const kbName = kb?.name || `知识库 #${pathParts[1].slice(0, 8)}`;
+      if (pathParts[2] === 'documents') {
+        breadcrumbItems.push({ title: <Link to={`/kb/${pathParts[1]}/chat`}>{kbName}</Link> });
+        breadcrumbItems.push({ title: '文档管理' });
+      } else if (pathParts[2] === 'chat') {
+        breadcrumbItems.push({ title: <Link to={`/kb/${pathParts[1]}/documents`}>{kbName}</Link> });
+        breadcrumbItems.push({ title: '智能问答' });
+      } else if (pathParts[2] === 'graph') {
+        breadcrumbItems.push({ title: <Link to={`/kb/${pathParts[1]}/documents`}>{kbName}</Link> });
+        breadcrumbItems.push({ title: '知识图谱' });
+      }
+    }
+  }
 
   const userMenuItems = [
     {
@@ -103,6 +131,10 @@ const AppLayout: React.FC = () => {
             overflow: 'auto',
           }}
         >
+          <Breadcrumb
+            items={breadcrumbItems}
+            style={{ marginBottom: 16 }}
+          />
           <Outlet />
         </Content>
       </Layout>

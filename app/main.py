@@ -33,10 +33,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS — 来源列表由 settings.CORS_ORIGINS 控制
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,12 +50,18 @@ from api.auth import router as auth_router
 from api.knowledge_base import router as kb_router
 from api.document import router as doc_router
 from api.qa import router as qa_router
+from api.search import router as search_router
+from api.graph import router as graph_router
+from api.tag import router as tag_router
 from api.users import router as users_router
 
 app.include_router(auth_router)
 app.include_router(kb_router)
 app.include_router(doc_router)
 app.include_router(qa_router)
+app.include_router(search_router)
+app.include_router(graph_router)
+app.include_router(tag_router)
 app.include_router(users_router)
 
 

@@ -83,6 +83,7 @@ class DocumentResponse(BaseModel):
     chunk_count: int
     created_at: datetime
     updated_at: datetime
+    tags: list["TagResponse"] = []
 
     class Config:
         from_attributes = True
@@ -99,6 +100,12 @@ class DocumentUploadResponse(BaseModel):
 class QARequest(BaseModel):
     question: str = Field(min_length=1, max_length=4096)
 
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=4096)
+    conversation_id: Optional[str] = None
+
+
 class QAResponse(BaseModel):
     answer: str
     conversation_id: Optional[str] = None
@@ -106,9 +113,92 @@ class QAResponse(BaseModel):
     confidence: float = 0.0
 
 
+class ChatResponse(QAResponse):
+    context_rounds: int = 0  # 多轮对话已有的轮数
+
+
 class SourceInfo(BaseModel):
     document_id: str = ""
     document_name: str = ""
     chunk_text: str = ""
     page: Optional[int] = None
+    section: Optional[str] = None
     score: float = 0.0
+    sources: list[str] = []  # 命中通路 ["vector","bm25","kg"]
+    chunk_index: Optional[int] = None
+
+
+# ==================== 标签 ====================
+
+class TagCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    color: str = Field(default="#1890ff", max_length=16)
+
+
+class TagResponse(BaseModel):
+    id: str
+    name: str
+    color: str
+    kb_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TagAssignRequest(BaseModel):
+    tag_ids: list[str]
+    document_ids: list[str]
+
+
+# ==================== 文档详情 ====================
+
+class DocumentDetailResponse(DocumentResponse):
+    pass
+
+
+# ==================== 文档替换 ====================
+
+class DocumentReplaceRequest(BaseModel):
+    change_note: str = ""
+
+
+# ==================== 批量上传 ====================
+
+class BatchItemResult(BaseModel):
+    filename: str
+    document_id: str = ""
+    status: str = "success"  # success | failed
+    message: str = ""
+
+
+class BatchUploadResponse(BaseModel):
+    success_count: int
+    failed_count: int
+    skipped_count: int = 0
+    results: list[BatchItemResult] = []
+
+
+# ==================== 标签统计 ====================
+
+class TagStatResponse(BaseModel):
+    id: str
+    name: str
+    color: str
+    document_count: int
+
+
+# ==================== 文档版本 ====================
+
+class DocumentVersionResponse(BaseModel):
+    id: str
+    document_id: str
+    version: int
+    file_size: int
+    file_md5: str
+    chunk_count: int
+    change_note: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

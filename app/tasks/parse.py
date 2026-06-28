@@ -24,21 +24,10 @@ def _get_db_session():
 
 @celery_app.task(name="parse_document", bind=True, max_retries=3, default_retry_delay=30)
 def parse_document(self, doc_id: str):
-    """异步解析文档
-
-    1. 从数据库查询文档信息
-    2. 从 MinIO/本地下载文件
-    3. 匹配并调用解析器
-    4. 存储解析结果
-    5. 更新文档状态
-    """
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+    """异步解析文档"""
+    from tasks.celery_app import run_async_in_worker
     try:
-        result = loop.run_until_complete(_async_parse(doc_id))
-        return result
+        return run_async_in_worker(lambda: _async_parse(doc_id))
     except Exception as exc:
         task_logger.error(f"解析任务失败 doc_id={doc_id}: {exc}")
         raise self.retry(exc=exc)
@@ -143,6 +132,14 @@ async def _async_parse(doc_id: str) -> dict:
                     task_logger.info(f"已提交 Embedding 任务: doc_id={doc_id}")
                 except Exception as e:
                     task_logger.warning(f"Embedding 任务提交失败: {e}")
+
+                # 触发 KG 构建任务
+                try:
+                    from tasks.kg_build import build_knowledge_graph
+                    build_knowledge_graph.delay(doc_id)
+                    task_logger.info(f"已提交 KG 构建任务: doc_id={doc_id}")
+                except Exception as e:
+                    task_logger.warning(f"KG 构建任务提交失败: {e}")
 
                 return {
                     "status": "ready",

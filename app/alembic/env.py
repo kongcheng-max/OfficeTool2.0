@@ -12,10 +12,24 @@ from core.config import settings
 from core.database import Base
 
 # 导入所有模型以注册到 Base.metadata
-from models.models import User, KnowledgeBase, Document  # noqa: F401
+from models.models import (  # noqa: F401
+    User,
+    KnowledgeBase,
+    Document,
+    Tag,
+    DocumentVersion,
+    document_tags,
+)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+# Handle USE_SQLITE flag: use SQLite URL when enabled
+if settings.USE_SQLITE:
+    config.set_main_option(
+        "sqlalchemy.url", "sqlite+aiosqlite:///./officetool_dev.db"
+    )
+else:
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

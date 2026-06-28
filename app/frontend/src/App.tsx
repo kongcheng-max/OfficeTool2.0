@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import KnowledgeBase from './pages/KnowledgeBase/index';
 import Documents from './pages/Documents/index';
 import Chat from './pages/Chat/index';
+import GraphPage from './pages/Graph/index';
 import { useAuthStore } from './stores/authStore';
 
 /** Route guard: redirect to /login if no token */
@@ -44,6 +45,7 @@ const App: React.FC = () => {
             <Route path="/kb/manage" element={<KnowledgeBase />} />
             <Route path="/kb/:id/documents" element={<Documents />} />
             <Route path="/kb/:id/chat" element={<Chat />} />
+            <Route path="/kb/:id/graph" element={<GraphPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

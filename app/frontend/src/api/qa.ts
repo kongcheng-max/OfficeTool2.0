@@ -5,7 +5,10 @@ export interface SourceInfo {
   document_name: string;
   chunk_text: string;
   page: number | null;
+  section?: string | null;
   score: number;
+  sources?: string[];       // e.g. ["vector","bm25","kg"]
+  chunk_index?: number | null;
 }
 
 export interface QAResponse {
@@ -13,6 +16,10 @@ export interface QAResponse {
   conversation_id: string;
   sources: SourceInfo[];
   confidence: number;
+}
+
+export interface ChatResponse extends QAResponse {
+  context_rounds: number;   // multi-turn rounds so far
 }
 
 export interface QARequest {
@@ -23,13 +30,11 @@ export async function askQuestion(kbId: string, question: string): Promise<QARes
   return client.post(`/kb/${kbId}/qa`, { question });
 }
 
-/**
- * SSE streaming Q&A.
- * Returns an AbortController so the caller can cancel.
- */
-export function askQuestionStream(
-  kbId: string,
-  question: string,
+// ── SSE helpers ────────────────────────────────────────────
+
+function _sseFetch(
+  endpoint: string,
+  body: Record<string, unknown>,
   onChunk: (text: string) => void,
   onDone: (sources: SourceInfo[], confidence: number, conversationId: string) => void,
   onError: (error: Error) => void,
@@ -37,13 +42,13 @@ export function askQuestionStream(
   const controller = new AbortController();
   const token = localStorage.getItem('token');
 
-  fetch(`/api/v1/kb/${kbId}/qa/stream`, {
+  fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(body),
     signal: controller.signal,
   })
     .then(async (response) => {
@@ -108,4 +113,47 @@ export function askQuestionStream(
     });
 
   return controller;
+}
+
+// ── Public API ──────────────────────────────────────────────
+
+/**
+ * Single-turn streaming Q&A.
+ * Uses /qa/stream endpoint (no multi-turn context).
+ */
+export function askQuestionStream(
+  kbId: string,
+  question: string,
+  onChunk: (text: string) => void,
+  onDone: (sources: SourceInfo[], confidence: number, conversationId: string) => void,
+  onError: (error: Error) => void,
+): AbortController {
+  return _sseFetch(
+    `/api/v1/kb/${kbId}/qa/stream`,
+    { question },
+    onChunk,
+    onDone,
+    onError,
+  );
+}
+
+/**
+ * Multi-turn streaming Q&A.
+ * Uses /chat/stream endpoint. Pass conversation_id to continue a conversation.
+ */
+export function chatStream(
+  kbId: string,
+  question: string,
+  conversationId: string | undefined,
+  onChunk: (text: string) => void,
+  onDone: (sources: SourceInfo[], confidence: number, conversationId: string) => void,
+  onError: (error: Error) => void,
+): AbortController {
+  return _sseFetch(
+    `/api/v1/kb/${kbId}/chat/stream`,
+    { question, conversation_id: conversationId ?? null },
+    onChunk,
+    onDone,
+    onError,
+  );
 }

@@ -19,15 +19,32 @@ class TextParser(BaseParser):
         if not content.strip():
             return []
 
-        return [Chunk(
-            content=content,
-            metadata={
-                "source": original_filename,
-                "parser_name": self.name,
-                "chunk_index": 0,
-            },
-            chunk_type="text",
-        )]
+        # Split by double newlines to preserve paragraph structure
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        if len(paragraphs) <= 1:
+            return [Chunk(
+                content=content,
+                metadata={
+                    "source": original_filename,
+                    "parser_name": self.name,
+                    "chunk_index": 0,
+                },
+                chunk_type="text",
+            )]
+
+        chunks = []
+        for i, para in enumerate(paragraphs):
+            chunks.append(Chunk(
+                content=para,
+                metadata={
+                    "source": original_filename,
+                    "parser_name": self.name,
+                    "chunk_index": i,
+                    "section": f"段落{i + 1}",
+                },
+                chunk_type="text",
+            ))
+        return chunks
 
 
 class MarkdownParser(BaseParser):
