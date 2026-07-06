@@ -1,5 +1,6 @@
 """文档服务层 — 上传 / 替换 / MD5去重 / 版本追踪"""
 
+import asyncio
 import os
 import uuid
 from datetime import datetime, timezone
@@ -135,13 +136,37 @@ async def create_document(
 
 
 def _trigger_parse_task(doc_id: str):
-    from tasks.parse import parse_document
+    """触发文档解析 — 优先 Celery 异步，不可用时同步执行"""
     try:
+        from tasks.parse import parse_document
         parse_document.delay(doc_id)
-        logger.info(f"已提交解析: doc_id={doc_id}")
+        logger.info(f"已提交异步解析: doc_id={doc_id}")
     except Exception as e:
-        logger.error(f"Celery 提交失败 doc_id={doc_id}: {e}")
-        raise RuntimeError(f"Celery 不可用: {e}") from e
+        logger.warning(f"Celery 不可用，改为同步解析 doc_id={doc_id}: {e}")
+        try:
+            _run_parse_sync(doc_id)
+        except Exception as sync_e:
+            logger.error(f"同步解析也失败 doc_id={doc_id}: {sync_e}")
+            raise RuntimeError(f"解析失败: {sync_e}") from sync_e
+
+
+def _run_parse_sync(doc_id: str):
+    """同步执行文档解析（无 Celery 时使用）"""
+    import asyncio
+    from tasks.parse import _async_parse
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None and loop.is_running():
+        # 在已有 event loop 中（FastAPI 请求内），创建新线程执行
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, _async_parse(doc_id))
+            future.result(timeout=600)
+    else:
+        asyncio.run(_async_parse(doc_id))
 
 
 # ========================================================================

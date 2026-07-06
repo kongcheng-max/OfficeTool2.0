@@ -1,0 +1,23 @@
+[Unit]
+Description=OfficeTool FastAPI Backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/officetool/app
+EnvironmentFile=/opt/officetool/app/.env
+ExecStart=/opt/officetool/app/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+RestartSec=5
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+
+# 资源限制（2C2G 服务器）
+MemoryMax=800M
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target

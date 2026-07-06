@@ -19,17 +19,25 @@ from engine.rag.retriever import (
 from engine.rag.vector_store import vector_store
 
 # ========================================================================
-# 全局检索器（三路混合检索：向量 + BM25 + KG）
+# 全局检索器（三路混合检索：向量 + BM25 + KG）— 懒加载，首次调用时初始化
 # ========================================================================
 
-_hybrid_retriever = HybridRetriever(
-    vector_retriever=Retriever(
-        embedder=create_embedder(use_dummy_fallback=True),
-        store=vector_store,
-    ),
-    bm25_retriever=BM25Retriever(),
-    kg_retriever=KGRetriever(),
-)
+_hybrid_retriever: Optional[HybridRetriever] = None
+
+
+def _get_hybrid_retriever() -> HybridRetriever:
+    """懒加载混合检索器（延迟 Embedder 模型加载到首次使用）"""
+    global _hybrid_retriever
+    if _hybrid_retriever is None:
+        _hybrid_retriever = HybridRetriever(
+            vector_retriever=Retriever(
+                embedder=create_embedder(use_dummy_fallback=True),
+                store=vector_store,
+            ),
+            bm25_retriever=BM25Retriever(),
+            kg_retriever=KGRetriever(),
+        )
+    return _hybrid_retriever
 
 # ========================================================================
 # Redis 多轮对话存储
@@ -232,7 +240,7 @@ async def _retrieve(
 ) -> List[Dict]:
     """统一检索入口，外部异常全兜底"""
     try:
-        result = await _hybrid_retriever.retrieve(
+        result = await _get_hybrid_retriever().retrieve(
             question, kb_id=kb_id, top_k=top_k, use_kg=use_kg,
         )
         hits = result["hits"]
