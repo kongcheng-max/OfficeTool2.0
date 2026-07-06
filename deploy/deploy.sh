@@ -1,16 +1,16 @@
 #!/bin/bash
 # ============================================================
-# OfficeTool 轻量化部署脚本
-# 适用于: 阿里云 ECS 2C2G + CentOS 7/8 或 Ubuntu 20.04+
-# 使用: chmod +x deploy.sh && sudo bash deploy.sh
+# OfficeTool 轻量化部署脚本 — 宝塔 Linux 面板专用
+# 使用: 在宝塔【文件】页面上传代码后，在【终端】中运行:
+#   cd /www/wwwroot/officetool && sudo bash deploy/deploy.sh
 # ============================================================
 
 set -e
 
-# ========== 配置变量（请修改为实际值）==========
-DOMAIN="你的域名"                          # 例如: officetool.example.com
-PROJECT_DIR="/opt/officetool"             # 项目安装目录
-PYTHON_BIN="python3.11"                   # Python 3.11 可执行文件名
+# ========== 配置变量（请修改）==========
+DOMAIN="你的域名"
+PROJECT_DIR="/www/wwwroot/officetool"
+PYTHON_BIN="python3.11"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,82 +22,75 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
 echo "============================================"
-echo "  OfficeTool 轻量化部署"
-echo "  目标服务器: 2C2G"
+echo "  OfficeTool 轻量化部署（宝塔面板）"
 echo "============================================"
 echo ""
 
-# ========== 1. 检查系统环境 ==========
-log "Step 1/8: 检查系统环境..."
+# ========== 1. 安装 Python 3.11 ==========
+log "Step 1/7: 安装 Python 3.11..."
 
-# 检查 Python
-if ! command -v $PYTHON_BIN &>/dev/null; then
-    # 尝试 python3
-    if command -v python3 &>/dev/null; then
-        PYTHON_BIN="python3"
-    else
-        err "未找到 Python，请先安装 Python 3.11+"
-    fi
-fi
-
-PYTHON_VER=$($PYTHON_BIN --version 2>&1 | awk '{print $2}')
-log "Python: $PYTHON_VER"
-
-# 检查 Node.js
-if ! command -v node &>/dev/null; then
-    err "未找到 Node.js，请先安装 Node.js 18+"
-fi
-NODE_VER=$(node --version)
-log "Node.js: $NODE_VER"
-
-# 检查 Nginx
-if ! command -v nginx &>/dev/null; then
-    warn "Nginx 未安装，正在安装..."
+if command -v python3.11 &>/dev/null; then
+    log "Python 3.11 已安装: $(python3.11 --version)"
+else
+    warn "正在安装 Python 3.11（需要 2-3 分钟）..."
     if command -v apt &>/dev/null; then
-        apt update && apt install -y nginx
+        # Ubuntu/Debian
+        apt update -qq
+        apt install -y -qq software-properties-common
+        add-apt-repository -y ppa:deadsnakes/ppa 2>/dev/null || true
+        apt update -qq
+        apt install -y -qq python3.11 python3.11-venv python3.11-dev
     elif command -v yum &>/dev/null; then
-        yum install -y nginx
+        # CentOS 7
+        yum install -y gcc openssl-devel bzip2-devel libffi-devel zlib-devel
+        cd /tmp
+        if [ ! -f Python-3.11.9.tar.xz ]; then
+            curl -O https://mirrors.huaweicloud.com/python/3.11.9/Python-3.11.9.tar.xz
+            tar -xf Python-3.11.9.tar.xz
+        fi
+        cd Python-3.11.9
+        ./configure --enable-optimizations --prefix=/usr/local/python3.11
+        make -j$(nproc)
+        make install
+        ln -sf /usr/local/python3.11/bin/python3.11 /usr/bin/python3.11
+        ln -sf /usr/local/python3.11/bin/pip3.11 /usr/bin/pip3.11
+        cd "$PROJECT_DIR"
     else
-        err "无法安装 Nginx，请手动安装"
+        err "不支持的系统，请手动安装 Python 3.11"
     fi
-fi
-log "Nginx: $(nginx -v 2>&1)"
-
-# 检查可用内存
-TOTAL_MEM=$(free -m | awk '/Mem:/{print $2}')
-log "内存: ${TOTAL_MEM}MB"
-if [ "$TOTAL_MEM" -lt 1500 ]; then
-    warn "内存不足 1.5GB，服务运行可能不稳定"
+    log "Python 3.11 安装完成"
 fi
 
-# ========== 2. 创建目录 ==========
-log "Step 2/8: 创建项目目录..."
-mkdir -p "$PROJECT_DIR"
-mkdir -p "$PROJECT_DIR/app/uploads"
+# 确保 pip 可用
+$PYTHON_BIN -m pip --version &>/dev/null || $PYTHON_BIN -m ensurepip --upgrade
 
-# ========== 3. 上传代码（提示） ==========
-log "Step 3/8: 上传项目代码..."
-if [ ! -f "$PROJECT_DIR/app/main.py" ]; then
-    warn "请将项目代码上传到 $PROJECT_DIR"
-    warn "方式一（本地打包上传）:"
-    warn "  tar -czf officetool.tar.gz --exclude='.venv' --exclude='node_modules' --exclude='__pycache__' --exclude='.git' app/ deploy/"
-    warn "  scp officetool.tar.gz root@你的服务器IP:/opt/officetool/"
-    warn "  ssh root@服务器 'cd /opt/officetool && tar -xzf officetool.tar.gz'"
-    warn ""
-    warn "方式二（从 Git 拉取）:"
-    warn "  cd $PROJECT_DIR && git clone <你的仓库地址> ."
-    warn ""
-    warn "请在另一个终端上传代码后，按回车继续..."
-    read -r
+# ========== 2. 安装 Node.js 18 ==========
+log "Step 2/7: 安装 Node.js 18..."
+
+if command -v node &>/dev/null; then
+    NODE_VER=$(node --version)
+    log "Node.js 已安装: $NODE_VER"
+else
+    warn "正在安装 Node.js 18..."
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - 2>/dev/null && \
+        apt install -y nodejs 2>/dev/null || \
+    (
+        # CentOS 备用方案
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - 2>/dev/null && \
+        yum install -y nodejs 2>/dev/null
+    ) || (
+        # 通用方案：使用 nvm
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        nvm install 18
+        nvm use 18
+    )
+    log "Node.js 安装完成: $(node --version)"
 fi
 
-if [ ! -f "$PROJECT_DIR/app/main.py" ]; then
-    err "未检测到项目代码，请先上传"
-fi
-log "项目代码已就位"
-
-# ========== 4. 安装 Python 依赖 ==========
-log "Step 4/8: 安装 Python 依赖..."
+# ========== 3. 安装 Python 依赖 ==========
+log "Step 3/7: 安装 Python 依赖..."
 
 cd "$PROJECT_DIR/app"
 
@@ -108,16 +101,14 @@ if [ ! -d ".venv" ]; then
 fi
 
 source .venv/bin/activate
-
-# 安装依赖（轻量化：只装核心依赖）
-log "安装核心依赖（可能需要几分钟）..."
 pip install --upgrade pip -q
 
+log "安装核心依赖（首次运行约 3-5 分钟）..."
 pip install \
-    fastapi uvicorn[standard] \
+    fastapi "uvicorn[standard]" \
     sqlalchemy aiosqlite \
-    pydantic[email] pydantic-settings \
-    python-jose[cryptography] bcrypt \
+    "pydantic[email]" pydantic-settings \
+    "python-jose[cryptography]" bcrypt \
     python-multipart httpx \
     loguru pymupdf \
     python-docx openpyxl python-pptx \
@@ -130,16 +121,11 @@ pip install \
 
 log "Python 依赖安装完成"
 
-# ========== 5. 配置环境变量 ==========
-log "Step 5/8: 配置环境变量..."
+# ========== 4. 配置环境变量 ==========
+log "Step 4/7: 配置环境变量..."
 
 if [ ! -f ".env" ]; then
-    if [ -f "../deploy/.env.lightweight" ]; then
-        cp ../deploy/.env.lightweight .env
-    else
-        # 手动创建
-        warn "未找到模板文件，生成默认 .env"
-        cat > .env << 'ENVEOF'
+    cp ../deploy/.env.lightweight .env 2>/dev/null || cat > .env << 'ENVEOF'
 APP_NAME=OfficeTool
 APP_VERSION=0.1.0
 DEBUG=false
@@ -158,23 +144,23 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=1440
 CORS_ORIGINS=http://localhost:5173
 ENVEOF
-    fi
 fi
 
 # 生成 SECRET_KEY
-if grep -q "change-me\|changeme" .env 2>/dev/null; then
+if grep -q "changeme\|change-me" .env 2>/dev/null; then
     NEW_KEY=$($PYTHON_BIN -c "import secrets; print(secrets.token_hex(32))")
     sed -i "s/SECRET_KEY=.*/SECRET_KEY=$NEW_KEY/" .env
     log "SECRET_KEY 已自动生成"
 fi
 
-warn "请编辑 $PROJECT_DIR/app/.env 填写你的 LLM API Key！"
+warn "============================================"
+warn "请编辑 .env 填写 LLM API Key！"
 warn "  vim $PROJECT_DIR/app/.env"
-warn "  修改 LLM_DEEPSEEK_API_KEY 或 LLM_TONGYI_API_KEY"
-warn ""
+warn "  修改 LLM_DEEPSEEK_API_KEY=你的Key"
+warn "============================================"
 
-# ========== 6. 构建前端 ==========
-log "Step 6/8: 构建前端..."
+# ========== 5. 构建前端 ==========
+log "Step 5/7: 构建前端..."
 
 cd "$PROJECT_DIR/app/frontend"
 
@@ -187,19 +173,26 @@ log "构建生产版本..."
 npm run build 2>&1 | tail -10
 
 if [ -d "dist" ]; then
-    log "前端构建完成: $(du -sh dist | cut -f1)"
+    log "前端构建完成 ($(du -sh dist | cut -f1))"
 else
     err "前端构建失败"
 fi
 
-# ========== 7. 配置 Nginx ==========
-log "Step 7/8: 配置 Nginx..."
+# ========== 6. 生成 Nginx 配置文件 ==========
+log "Step 6/7: 生成 Nginx 配置..."
 
-if [ -f "$PROJECT_DIR/deploy/nginx.conf" ]; then
-    cp "$PROJECT_DIR/deploy/nginx.conf" /etc/nginx/conf.d/officetool.conf
+# 宝塔 Nginx 配置目录
+BT_NGINX_VHOST="/www/server/panel/vhost/nginx"
+
+if [ -d "$BT_NGINX_VHOST" ]; then
+    NGINX_CONF="$BT_NGINX_VHOST/officetool.conf"
+    log "检测到宝塔面板，配置写入: $NGINX_CONF"
 else
-    # 内联生成 Nginx 配置
-    cat > /etc/nginx/conf.d/officetool.conf << NGINXEOF
+    NGINX_CONF="/www/server/nginx/conf/conf.d/officetool.conf"
+    mkdir -p "$(dirname "$NGINX_CONF")"
+fi
+
+cat > "$NGINX_CONF" << NGINXEOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -209,6 +202,7 @@ server {
 
     client_max_body_size 200m;
 
+    # API 反向代理
     location /api/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
@@ -220,48 +214,39 @@ server {
         proxy_send_timeout 300s;
     }
 
+    # API 文档
     location /docs {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
     }
-
     location /redoc {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
     }
-
     location /openapi.json {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
     }
 
+    # SPA 路由
     location / {
         try_files \$uri \$uri/ /index.html;
     }
-
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
 }
 NGINXEOF
-fi
-
-# 替换域名占位符
-sed -i "s/你的域名/$DOMAIN/g" /etc/nginx/conf.d/officetool.conf
-
-# 测试 Nginx 配置
-nginx -t || err "Nginx 配置校验失败"
 
 # 重载 Nginx
-systemctl reload nginx || nginx -s reload
-log "Nginx 已配置"
-
-# ========== 8. 配置 systemd 服务 ==========
-log "Step 8/8: 配置 systemd 服务..."
-
-if [ -f "$PROJECT_DIR/deploy/officetool.service" ]; then
-    cp "$PROJECT_DIR/deploy/officetool.service" /etc/systemd/system/officetool.service
+if command -v nginx &>/dev/null; then
+    nginx -t && nginx -s reload && log "Nginx 已重载"
 else
-    cat > /etc/systemd/system/officetool.service << SVCEOF
+    warn "Nginx 路径: /www/server/nginx/sbin/nginx"
+    /www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload && log "Nginx 已重载"
+fi
+
+# ========== 7. 配置 systemd 并启动 ==========
+log "Step 7/7: 配置 systemd 并启动..."
+
+cat > /etc/systemd/system/officetool.service << SVCEOF
 [Unit]
 Description=OfficeTool FastAPI Backend
 After=network.target
@@ -277,12 +262,10 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 MemoryMax=800M
-CPUQuota=100%
 
 [Install]
 WantedBy=multi-user.target
 SVCEOF
-fi
 
 systemctl daemon-reload
 systemctl enable officetool
@@ -290,32 +273,38 @@ systemctl restart officetool
 
 sleep 3
 
-# 检查服务状态
 if systemctl is-active --quiet officetool; then
-    log "OfficeTool 服务已启动"
+    log "OfficeTool 服务已启动 ✅"
 else
-    warn "OfficeTool 服务启动失败，查看日志: journalctl -u officetool -n 50"
+    warn "服务启动失败，查看日志: journalctl -u officetool -n 50"
 fi
 
 # ========== 完成 ==========
 echo ""
 echo "============================================"
-echo "  ✅ 部署完成！"
+echo "  ✅ 部署完成！接下来在宝塔面板中操作："
 echo "============================================"
 echo ""
-echo "  访问地址:  http://$DOMAIN"
-echo "  API 文档:  http://$DOMAIN/docs"
+echo "  📌 第 1 步：添加网站"
+echo "     宝塔 → 网站 → 添加站点"
+echo "     域名: $DOMAIN"
+echo "     根目录: $PROJECT_DIR/app/frontend/dist"
+echo "     （如果已添加，修改根目录即可）"
 echo ""
-echo "  常用命令:"
-echo "    查看日志:  journalctl -u officetool -f"
-echo "    重启服务:  systemctl restart officetool"
-echo "    查看状态:  systemctl status officetool"
+echo "  📌 第 2 步：配置反向代理"
+echo "     宝塔 → 网站 → $DOMAIN → 反向代理"
+echo "     添加: 名称=API, URL=http://127.0.0.1:8000"
+echo "     发送域名=\$host"
 echo ""
-echo "  ⚠️  别忘了编辑 .env 填入 LLM API Key:"
-echo "      vim $PROJECT_DIR/app/.env"
-echo "      systemctl restart officetool"
+echo "  📌 第 3 步：一键 SSL"
+echo "     宝塔 → 网站 → $DOMAIN → SSL"
+echo "     选择 Let's Encrypt → 申请"
 echo ""
-echo "  ⚠️  配置 SSL（Let's Encrypt 免费证书）:"
-echo "      yum install -y certbot python3-certbot-nginx"
-echo "      certbot --nginx -d $DOMAIN"
+echo "  📌 第 4 步：编辑 .env 填 LLM API Key"
+echo "     宝塔 → 文件 → $PROJECT_DIR/app/.env"
+echo "     修改 LLM_DEEPSEEK_API_KEY=你的Key"
+echo "     然后在终端执行: systemctl restart officetool"
+echo ""
+echo "  测试: https://$DOMAIN"
+echo "  API文档: https://$DOMAIN/docs"
 echo "============================================"
