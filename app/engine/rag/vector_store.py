@@ -77,26 +77,44 @@ class VectorStore:
         return Collection(name=self.COLLECTION_NAME)
 
     def ensure_index(self):
-        """确保索引已创建"""
+        """确保 HNSW 索引已创建 — 存量 IVF_FLAT 集合自动迁移 (W9.7)"""
         import json
         self.connect()
         coll = self.get_collection()
 
-        # 检查是否已有索引
+        # 检查已有索引类型
         indexes = coll.indexes
         if indexes:
-            return
+            existing_type = None
+            for idx in indexes:
+                existing_type = idx.params.get("index_type", "")
+                break
 
+            if existing_type == "HNSW":
+                return  # 已经是 HNSW，无需迁移
+
+            # 迁移：删除旧索引 → 重建为 HNSW
+            logger.info(
+                f"Milvus 索引迁移: {existing_type} → HNSW "
+                f"(collection={self.COLLECTION_NAME})"
+            )
+            try:
+                coll.drop_index()
+                logger.info(f"已删除旧索引 {existing_type}")
+            except Exception as e:
+                logger.warning(f"删除旧索引失败: {e}")
+
+        # 创建 HNSW 索引
         index_params = {
             "metric_type": self.METRIC_TYPE,
-            "index_type": "IVF_FLAT",
-            "params": {"nlist": 128},
+            "index_type": "HNSW",
+            "params": {"M": 16, "efConstruction": 200},
         }
         coll.create_index(
             field_name="embedding",
             index_params=index_params,
         )
-        logger.info(f"Milvus 索引已创建: {self.COLLECTION_NAME}")
+        logger.info(f"Milvus HNSW 索引已创建: {self.COLLECTION_NAME}")
 
     def insert(self, records: List[Dict]) -> List[int]:
         """批量插入向量记录
@@ -154,9 +172,10 @@ class VectorStore:
         coll = self.get_collection()
         coll.load()
 
+        # W9.7: HNSW 用 ef 控制搜索精度/速度平衡（ef 越大越准越慢）
         search_params = {
             "metric_type": self.METRIC_TYPE,
-            "params": {"nprobe": 16},
+            "params": {"ef": 64},
         }
 
         # 构建过滤条件

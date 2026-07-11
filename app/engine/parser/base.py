@@ -1,9 +1,11 @@
 """解析引擎核心 — BaseParser 抽象类 + Chunk 数据结构 + ParserRegistry"""
 
+import asyncio
+import concurrent.futures
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 
 @dataclass
@@ -77,6 +79,18 @@ class BaseParser(ABC):
         if mime_type and mime_type in self.supported_mime_types:
             return True
         return False
+
+    async def _run_sync_in_thread(self, fn: Callable, *args) -> List["Chunk"]:
+        """在线程池中执行同步阻塞解析逻辑，避免阻塞 asyncio event loop。
+
+        适用于 PPTX / HTML / JSON 等依赖 C 扩展（lxml）或同步 I/O 的解析器。
+        用法:
+            async def parse(self, file_path, original_filename):
+                return await self._run_sync_in_thread(self._parse_sync, file_path, original_filename)
+        """
+        loop = asyncio.get_running_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return await loop.run_in_executor(pool, fn, *args)
 
 
 class ParserRegistry:

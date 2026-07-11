@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Index, Integer, String, Table, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -76,12 +76,19 @@ class Document(Base):
     file_md5: Mapped[str] = mapped_column(String(64), default="")
     status: Mapped[str] = mapped_column(
         String(16), default="uploaded", index=True
-    )  # uploaded | processing | ready | failed
+    )  # uploaded | processing | parsed | ready | failed
     error_message: Mapped[str] = mapped_column(Text, default="")
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    # W10.7: 复合索引优化高频查询
+    __table_args__ = (
+        Index("ix_documents_kb_status", "kb_id", "status"),       # 知识库+状态筛选
+        Index("ix_documents_kb_md5", "kb_id", "file_md5"),        # MD5 去重查询
+        Index("ix_documents_kb_created", "kb_id", "created_at"),  # 列表排序
     )
 
     # 关系
@@ -111,6 +118,11 @@ class Tag(Base):
     color: Mapped[str] = mapped_column(String(16), default="#1890ff")
     kb_id: Mapped[str] = mapped_column(String(32), ForeignKey("knowledge_bases.id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    # W10.7: kb 内标签名唯一 + 索引优化
+    __table_args__ = (
+        Index("ix_tags_kb_name", "kb_id", "name"),  # 知识库内标签查重/排序
+    )
 
     # 关系
     documents = relationship("Document", secondary="document_tags", back_populates="tags")

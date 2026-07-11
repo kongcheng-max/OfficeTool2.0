@@ -1,6 +1,8 @@
-"""图谱查询 — Cypher 查询 / NL2Cypher"""
+"""图谱查询 — Cypher 查询 / NL2Cypher (W11.10)"""
 
-from typing import List, Optional
+import json
+import re
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -147,3 +149,104 @@ class GraphQuery:
 
 # 全局单例
 graph_query = GraphQuery()
+
+
+# ═══════════════════════════════════════════════════════════════
+# NL2Cypher — 自然语言 → Cypher 查询 (W11.10)
+# ═══════════════════════════════════════════════════════════════
+
+NL2CYPHER_SYSTEM = """你是一个 Neo4j Cypher 查询生成专家。将用户自然语言问题转为 Cypher 查询语句。
+
+## 数据库 Schema
+- (e:Entity {name, type, doc_ids[], kb_ids[]})
+- (e1)-[r:RELATES {predicate, doc_ids[], evidence}]->(e2)
+- Entity type: PERSON, ORG, DATE, MONEY, LOCATION, TERM
+
+## 规则
+1. 只生成 SELECT 查询
+2. 使用 MATCH ... RETURN ... 格式
+3. 实体名模糊匹配: WHERE e.name CONTAINS 'xxx'
+4. 关系方向不定: MATCH (a)-[r]-(b)
+5. LIMIT 20
+6. 返回纯 Cypher 语句
+
+## Few-shot 示例
+问: 华为签署了哪些合同？
+答: MATCH (e:Entity)-[r:RELATES]->(t:Entity) WHERE e.name CONTAINS '华为' AND r.predicate='SIGNS' RETURN e.name, r.predicate, t.name, r.evidence LIMIT 20
+
+问: 张三与哪些公司有关联？
+答: MATCH (p:Entity)-[r:RELATES]-(org:Entity) WHERE p.name CONTAINS '张三' AND org.type='ORG' RETURN p.name, r.predicate, org.name, r.evidence LIMIT 20
+"""
+
+NL2CYPHER_USER = """将以下问题转为 Cypher 查询：
+
+{question}
+
+Cypher："""
+
+
+class KGQueryEngine:
+    """图谱 NL2Cypher 查询引擎"""
+
+    async def query(self, question: str, kb_id: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
+        """NL → Cypher → Neo4j 执行"""
+        cypher = await self._generate_cypher(question)
+        if not cypher:
+            return {"cypher": "", "results": [], "error": "Cypher 生成失败"}
+
+        try:
+            from engine.kg.neo4j_store import neo4j_store
+            results = await self._execute_cypher(neo4j_store, cypher, kb_id, limit)
+            return {"cypher": cypher, "results": results, "error": None}
+        except Exception as e:
+            logger.warning(f"NL2Cypher 执行失败: {e}")
+            return {"cypher": cypher, "results": [], "error": str(e)}
+
+    async def _generate_cypher(self, question: str) -> str:
+        """LLM → Cypher"""
+        try:
+            from engine.llm.factory import LLMFactory
+            messages = [
+                {"role": "system", "content": NL2CYPHER_SYSTEM},
+                {"role": "user", "content": NL2CYPHER_USER.format(question=question)},
+            ]
+            answer = await LLMFactory.generate_with_fallback(messages=messages, temperature=0.1)
+            cypher = answer.strip()
+            m = re.search(r'```(?:cypher)?\s*(.*?)\s*```', cypher, re.DOTALL | re.IGNORECASE)
+            if m:
+                cypher = m.group(1).strip()
+            logger.info(f"NL2Cypher: '{question[:60]}' → {cypher[:120]}")
+            return cypher
+        except Exception as e:
+            logger.error(f"NL2Cypher LLM 失败: {e}")
+            return ""
+
+    async def _execute_cypher(self, store, cypher: str, kb_id: Optional[str], limit: int) -> List[Dict]:
+        """执行 Cypher"""
+        if not await store._ensure_connection():
+            return []
+
+        params = {"limit": limit}
+        if kb_id:
+            params["kb_id"] = kb_id
+            # BUG-077: LLM 可能已生成 WHERE，检测后用 AND 追加避免双 WHERE
+            if re.search(r'\bWHERE\b', cypher, re.IGNORECASE):
+                cypher = re.sub(
+                    r'\bRETURN\b',
+                    'AND $kb_id IN e.kb_ids RETURN',
+                    cypher, count=1, flags=re.IGNORECASE,
+                )
+            else:
+                cypher = re.sub(
+                    r'\bRETURN\b',
+                    'WHERE $kb_id IN e.kb_ids RETURN',
+                    cypher, count=1, flags=re.IGNORECASE,
+                )
+
+        async with store.driver.session() as session:
+            result = await session.run(cypher, params)
+            return await result.data()
+
+
+# 全局单例
+kg_query_engine = KGQueryEngine()

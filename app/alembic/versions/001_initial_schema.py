@@ -35,13 +35,13 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
     )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
@@ -59,13 +59,13 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
     )
     op.create_index(
@@ -100,13 +100,13 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
     )
     op.create_index(op.f("ix_documents_kb_id"), "documents", ["kb_id"])
@@ -128,7 +128,7 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
     )
     op.create_index(op.f("ix_tags_kb_id"), "tags", ["kb_id"])
@@ -170,7 +170,7 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("(datetime('now'))"),
+            # Python ORM handles default via _utcnow(); no DB-level default needed,
         ),
     )
     op.create_index(

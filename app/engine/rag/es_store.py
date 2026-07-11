@@ -70,6 +70,7 @@ class ESStore:
 
     @property
     def client(self) -> AsyncElasticsearch:
+        """FastAPI 稳定 event loop 下的单例客户端（search 用）"""
         if self._client is None:
             self._client = AsyncElasticsearch(
                 hosts=[settings.ELASTICSEARCH_URL],
@@ -77,10 +78,22 @@ class ESStore:
             )
         return self._client
 
-    async def _detect_analyzer(self) -> str:
+    def _new_client(self) -> AsyncElasticsearch:
+        """创建独立 ES 客户端 — 供 Celery/线程池 event loop 使用
+
+        BUG-067: 单例 client 绑定在首次创建时的 event loop，在 _run_async_safe
+        的 ThreadPoolExecutor + asyncio.run() 中会报 Event loop is closed。
+        写操作（index_chunks / delete_by_doc_id）每次创建新客户端并关闭。
+        """
+        return AsyncElasticsearch(
+            hosts=[settings.ELASTICSEARCH_URL],
+            request_timeout=30,
+        )
+
+    async def _detect_analyzer(self, client: AsyncElasticsearch) -> str:
         """探测可用的中文分词器：IK > smartcn > standard"""
         try:
-            resp = await self.client.cat.plugins(format="json")
+            resp = await client.cat.plugins(format="json")
             plugins = " ".join(p.get("component", "") for p in resp)
             if "analysis-ik" in plugins:
                 logger.info("ES 中文分词器: ik_smart")
@@ -91,10 +104,10 @@ class ESStore:
         logger.info("ES 中文分词器: smartcn (IK 未安装)")
         return "smartcn"
 
-    async def _get_mapping(self) -> dict:
+    async def _get_mapping(self, client: AsyncElasticsearch) -> dict:
         """获取适合当前 ES 的索引 Mapping"""
         if self._mapping is None:
-            analyzer = await self._detect_analyzer()
+            analyzer = await self._detect_analyzer(client)
             self._mapping = (
                 self.INDEX_MAPPING_IK if analyzer == "ik_smart"
                 else self.INDEX_MAPPING_SMARTCN
@@ -102,11 +115,16 @@ class ESStore:
             self.CHINESE_ANALYZER = analyzer
         return self._mapping
 
-    async def ensure_index(self):
-        """创建索引（如果不存在）"""
-        client = self.client
+    async def ensure_index(self, client: Optional[AsyncElasticsearch] = None):
+        """创建索引（如果不存在）
+
+        client=None 时使用单例（FastAPI 稳定 event loop），
+        传入 client 时使用指定客户端（Celery worker / 线程池）。
+        """
+        if client is None:
+            client = self.client
         if not await client.indices.exists(index=self.INDEX_NAME):
-            mapping = await self._get_mapping()
+            mapping = await self._get_mapping(client)
             try:
                 await client.indices.create(index=self.INDEX_NAME, body=mapping)
             except Exception as e:
@@ -130,38 +148,43 @@ class ESStore:
     async def index_chunks(self, records: List[Dict]):
         """批量写入文档块到 ES
 
+        BUG-067: 每次创建独立客户端，避免 Celery/线程池 event loop 冲突。
         Args:
             records: [{doc_id, kb_id, chunk_text, chunk_index, metadata_json}, ...]
         """
         if not records:
             return
 
-        await self.ensure_index()
-        client = self.client
-
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat()
-
-        operations = []
-        for rec in records:
-            operations.append({"index": {"_index": self.INDEX_NAME}})
-            operations.append({
-                "doc_id": rec["doc_id"],
-                "kb_id": rec["kb_id"],
-                "chunk_text": rec["chunk_text"],
-                "chunk_index": rec.get("chunk_index", 0),
-                "metadata_json": rec.get("metadata_json", "{}"),
-                "created_at": now,
-            })
-
+        # 创建独立客户端（不在 Celery 线程中复用单例）
+        client = self._new_client()
         try:
-            resp = await client.bulk(operations=operations, refresh=True)
-            if resp.get("errors"):
-                logger.warning(f"ES 批量写入有错误: {resp}")
-            else:
-                logger.info(f"ES 写入完成: {len(records)} 条")
-        except Exception as e:
-            logger.warning(f"ES 写入失败（可能未启动）: {e}")
+            await self.ensure_index(client=client)
+
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+
+            operations = []
+            for rec in records:
+                operations.append({"index": {"_index": self.INDEX_NAME}})
+                operations.append({
+                    "doc_id": rec["doc_id"],
+                    "kb_id": rec["kb_id"],
+                    "chunk_text": rec["chunk_text"],
+                    "chunk_index": rec.get("chunk_index", 0),
+                    "metadata_json": rec.get("metadata_json", "{}"),
+                    "created_at": now,
+                })
+
+            try:
+                resp = await client.bulk(operations=operations, refresh=True)
+                if resp.get("errors"):
+                    logger.warning(f"ES 批量写入有错误: {resp}")
+                else:
+                    logger.info(f"ES 写入完成: {len(records)} 条")
+            except Exception as e:
+                logger.warning(f"ES 写入失败（可能未启动）: {e}")
+        finally:
+            await client.close()
 
     async def search(
         self,
@@ -207,8 +230,11 @@ class ESStore:
         return hits
 
     async def delete_by_doc_id(self, doc_id: str):
-        """按文档 ID 删除"""
-        client = self.client
+        """按文档 ID 删除
+
+        BUG-067: 每次创建独立客户端，避免 Celery/线程池 event loop 冲突。
+        """
+        client = self._new_client()
         try:
             await client.delete_by_query(
                 index=self.INDEX_NAME,
@@ -218,6 +244,8 @@ class ESStore:
             logger.info(f"ES 文档已删除: doc_id={doc_id}")
         except Exception as e:
             logger.warning(f"ES 删除失败: {e}")
+        finally:
+            await client.close()
 
 
 # 全局单例

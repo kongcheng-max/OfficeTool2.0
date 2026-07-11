@@ -2,13 +2,14 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Request
 from loguru import logger
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import get_current_user
+from api.deps import get_current_user, get_current_user_from_query
+from core.config import settings
 from core.database import get_db
 from core.exceptions import BadRequestError, ConflictError, NotFoundError
 from core.response import APIResponse, PaginatedData
@@ -28,6 +29,46 @@ from services.storage import storage_service
 
 router = APIRouter(prefix="/api/v1/kb/{kb_id}/documents", tags=["文档"])
 
+# ── Upload safety: prevent OOM from large files ──────────────
+
+_MAX_BYTES = settings.MAX_FILE_SIZE_MB * 1024 * 1024  # 200 MB
+_CHUNK_SIZE = 8192  # 8 KB streaming read
+
+
+async def _read_file_safe(file: UploadFile, request: Request) -> bytes:
+    """流式读取上传文件，在超过限制时尽早拒绝，防止 OOM。
+
+    1. Content-Length 头快速预检（不精确但零成本）
+    2. 分块读取，累计超过 MAX_FILE_SIZE_MB 即抛出错误
+    """
+    # ── 预检 Content-Length ──
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            size_mb = int(content_length) / (1024 * 1024)
+            if size_mb > settings.MAX_FILE_SIZE_MB:
+                raise BadRequestError(
+                    f"文件大小超过限制 ({settings.MAX_FILE_SIZE_MB}MB，实际 {size_mb:.1f}MB)"
+                )
+        except ValueError:
+            pass  # Content-Length 不可解析则跳过预检
+
+    # ── 流式分块读取 ──
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > _MAX_BYTES:
+            raise BadRequestError(
+                f"文件大小超过限制 ({settings.MAX_FILE_SIZE_MB}MB)"
+            )
+        chunks.append(chunk)
+
+    return b"".join(chunks)
+
 
 # ====================================================================
 # 上传（单文件 + 批量 + ZIP 导入）
@@ -37,6 +78,7 @@ router = APIRouter(prefix="/api/v1/kb/{kb_id}/documents", tags=["文档"])
 async def upload_document(
     kb_id: str,
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -46,7 +88,7 @@ async def upload_document(
     if not file.filename:
         raise BadRequestError("文件名不能为空")
 
-    file_data = await file.read()
+    file_data = await _read_file_safe(file, request)
     if not file_data:
         raise BadRequestError("文件内容为空")
 
@@ -66,6 +108,7 @@ async def upload_document(
 async def batch_upload_documents(
     kb_id: str,
     files: list[UploadFile] = File(...),
+    request: Request = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -85,7 +128,7 @@ async def batch_upload_documents(
         if not file.filename:
             continue
         try:
-            data = await file.read()
+            data = await _read_file_safe(file, request)
             if not data:
                 continue
             md5 = storage_service.compute_md5(data)
@@ -152,6 +195,7 @@ async def batch_upload_documents(
 async def import_zip(
     kb_id: str,
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -163,7 +207,7 @@ async def import_zip(
     if not file.filename or not file.filename.lower().endswith(".zip"):
         raise BadRequestError("仅支持 ZIP 压缩包")
 
-    file_data = await file.read()
+    file_data = await _read_file_safe(file, request)
     zip_buffer = io.BytesIO(file_data)
 
     results = []
@@ -234,7 +278,7 @@ async def list_documents(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     tag_id: Optional[str] = Query(None, description="按标签筛选"),
-    status: Optional[str] = Query(None, description="按状态筛选: uploaded/processing/ready/failed"),
+    status: Optional[str] = Query(None, description="按状态筛选: uploaded/processing/parsed/ready/failed"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -328,6 +372,7 @@ async def replace_document_endpoint(
     kb_id: str,
     doc_id: str,
     file: UploadFile = File(...),
+    request: Request = None,
     change_note: str = Query("", description="版本变更说明"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -342,7 +387,7 @@ async def replace_document_endpoint(
     if not file.filename:
         raise BadRequestError("文件名不能为空")
 
-    file_data = await file.read()
+    file_data = await _read_file_safe(file, request)
     if not file_data:
         raise BadRequestError("文件内容为空")
 
@@ -426,11 +471,18 @@ async def delete_document(
         text(
             """UPDATE knowledge_bases SET chunk_count = (
                SELECT COALESCE(SUM(chunk_count), 0)
-               FROM documents WHERE kb_id = :kb_id AND status = 'ready'
+               FROM documents WHERE kb_id = :kb_id AND status IN ('parsed', 'ready')
             ) WHERE id = :kb_id"""
         ),
         {"kb_id": kb_id},
     )
+
+    # W10.1: 文档删除后清除 QA 缓存
+    try:
+        from services.qa_cache import qa_cache
+        await qa_cache.invalidate_kb(kb_id)
+    except Exception:
+        pass
 
     return APIResponse.success(message="文档已删除")
 
@@ -472,12 +524,13 @@ async def list_document_versions(
 async def download_document(
     kb_id: str,
     doc_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_query),
     db: AsyncSession = Depends(get_db),
 ):
     """下载源文件或在线预览
 
     返回文件字节流。PDF 和图片可浏览器直接预览，其他格式触发下载。
+    支持通过 ?token=xxx URL 参数传递 JWT，兼容 iframe/img/浏览器原生请求。
     """
     from fastapi.responses import Response
     import io

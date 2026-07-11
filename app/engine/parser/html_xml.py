@@ -1,4 +1,4 @@
-"""HTML / XML 解析器 — 标签剥离 + 正文提取"""
+"""HTML / XML 解析器 — 标签剥离 + 正文提取（线程池执行）"""
 
 from typing import List
 
@@ -16,6 +16,10 @@ class HTMLParser(BaseParser):
     SKIP_TAGS = {"script", "style", "nav", "footer", "header", "iframe", "noscript"}
 
     async def parse(self, file_path: str, original_filename: str) -> List[Chunk]:
+        """HTML 解析 — BeautifulSoup + lxml C 扩展同步调用，用线程池隔离"""
+        return await self._run_sync_in_thread(self._parse_sync, file_path, original_filename)
+
+    def _parse_sync(self, file_path: str, original_filename: str) -> List[Chunk]:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             html = f.read()
 

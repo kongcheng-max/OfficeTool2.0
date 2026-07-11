@@ -1,23 +1,29 @@
-import React from 'react';
-import { Layout, Menu, Avatar, Dropdown, Button, Breadcrumb } from 'antd';
+import React, { useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Button, Breadcrumb, theme, Grid } from 'antd';
 import {
   DashboardOutlined,
+  MenuOutlined,
   MessageOutlined,
   BookOutlined,
   LogoutOutlined,
   UserOutlined,
   HomeOutlined,
+  AuditOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useKBStore } from '../stores/kbStore';
 
 const { Header, Sider, Content } = Layout;
+const { useBreakpoint } = Grid;
 
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;  // W12.7: < 768px
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -27,6 +33,9 @@ const AppLayout: React.FC = () => {
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: '首页' },
     { key: '/kb/manage', icon: <BookOutlined />, label: '知识库' },
+    ...(user?.role === 'admin' ? [
+      { key: '/admin', icon: <AuditOutlined />, label: '管理后台' },
+    ] : []),
   ];
 
   // Determine selected menu key from path
@@ -73,11 +82,30 @@ const AppLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {/* W12.7: 移动端汉堡菜单 */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.45)', zIndex: 998,
+          }}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <Sider
         width={220}
-        style={{ background: '#001529' }}
+        style={{
+          background: '#001529',
+          ...(isMobile ? {
+            position: 'fixed', zIndex: 999, height: '100vh',
+            left: mobileMenuOpen ? 0 : -220,
+            transition: 'left 0.3s',
+          } : {}),
+        }}
         breakpoint="lg"
-        collapsedWidth="80"
+        collapsedWidth={isMobile ? 0 : 80}
+        trigger={null}
+        collapsible
       >
         <div
           style={{
@@ -107,14 +135,23 @@ const AppLayout: React.FC = () => {
         <Header
           style={{
             background: '#fff',
-            padding: '0 24px',
+            padding: isMobile ? '0 12px' : '0 24px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
             borderBottom: '1px solid #f0f0f0',
             height: 64,
           }}
         >
+          {/* W12.7: 移动端菜单按钮 */}
+          {isMobile && (
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            />
+          )}
+          <div style={{ flex: 1 }} />
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Button type="text" icon={<Avatar size="small" icon={<UserOutlined />} />}>
               {user?.username || '用户'}
@@ -125,7 +162,8 @@ const AppLayout: React.FC = () => {
         <Content
           style={{
             margin: 0,
-            padding: 24,
+            // W12.7: 响应式 padding
+            padding: isMobile ? 12 : 24,
             background: '#f5f5f5',
             minHeight: 280,
             overflow: 'auto',

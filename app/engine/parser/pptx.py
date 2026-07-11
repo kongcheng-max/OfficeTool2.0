@@ -1,4 +1,4 @@
-"""PPTX 解析器 — 基于 python-pptx"""
+"""PPTX 解析器 — 基于 python-pptx（线程池执行，避免阻塞 event loop）"""
 
 from typing import List
 
@@ -15,6 +15,10 @@ class PPTXParser(BaseParser):
     ]
 
     async def parse(self, file_path: str, original_filename: str) -> List[Chunk]:
+        """PPTX 解析 — python-pptx + lxml C 扩展同步调用，用线程池隔离"""
+        return await self._run_sync_in_thread(self._parse_sync, file_path, original_filename)
+
+    def _parse_sync(self, file_path: str, original_filename: str) -> List[Chunk]:
         chunks: List[Chunk] = []
         prs = Presentation(file_path)
 

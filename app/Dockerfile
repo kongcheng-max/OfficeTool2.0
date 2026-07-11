@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 系统依赖（含 Tesseract OCR 中文支持）
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 系统依赖（含 Tesseract OCR 中文支持）— 使用国内镜像避免网络问题
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null; \
+    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list 2>/dev/null; \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     tesseract-ocr \
     tesseract-ocr-chi-sim \
@@ -11,9 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
-# Python 依赖
+# Python 依赖 — 国内镜像加速
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[dev]" || pip install --no-cache-dir \
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ 2>/dev/null; \
+    pip install --no-cache-dir -e ".[dev]" || pip install --no-cache-dir \
     fastapi>=0.110.0 \
     uvicorn[standard]>=0.27.0 \
     sqlalchemy[asyncio]>=2.0.0 \

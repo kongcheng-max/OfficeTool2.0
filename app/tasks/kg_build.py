@@ -1,9 +1,10 @@
-"""知识图谱构建 Celery 任务 — 解析完成 → 实体抽取 → 归一化 → 关系抽取 → Neo4j"""
+"""知识图谱构建 Celery 任务 — 使用 safe-asyncio 模式避免 event loop 冲突"""
 
 from loguru import logger
 from celery.utils.log import get_task_logger
 
 from tasks.celery_app import celery_app
+from tasks.embed import _run_async_safe  # BUG-060: 统一 safe-asyncio 模式
 
 task_logger = get_task_logger(__name__)
 
@@ -13,18 +14,17 @@ def _get_db_session():
     return async_session_factory()
 
 
-@celery_app.task(name="build_knowledge_graph", bind=True, max_retries=2, default_retry_delay=120)
+@celery_app.task(name="build_knowledge_graph", bind=True, max_retries=2, default_retry_delay=10)
 def build_knowledge_graph(self, doc_id: str):
-    """异步 KG 构建：解析结果 → 实体抽取 → 标准化 → 关系抽取 → Neo4j 存储"""
-    from tasks.celery_app import run_async_in_worker
+    """异步 KG 构建 — 使用安全 event loop 模式（同 embed_document）
+
+    BUG-066: KG 是辅助管线，不修改文档主状态。
+    ready 由 embed_document 独设，确保 doc status 与 Milvus/ES 索引同步。
+    """
     try:
-        return run_async_in_worker(lambda: _async_build_kg(doc_id))
+        return _run_async_safe(_async_build_kg(doc_id))
     except Exception as exc:
         task_logger.error(f"KG 构建任务失败 doc_id={doc_id}: {exc}")
-        try:
-            run_async_in_worker(lambda: _update_doc_status(doc_id, "ready", f"KG 构建失败: {exc}"))
-        except Exception:
-            pass
         raise self.retry(exc=exc)
 
 
@@ -44,15 +44,12 @@ async def _async_build_kg(doc_id: str) -> dict:
                 select(Document).where(Document.id == doc_id)
             )
             doc = result.scalar_one_or_none()
-            if not doc or doc.status != "ready":
-                return {"status": "error", "error": "文档未就绪"}
+            # BUG-066: KG 只检查状态，不修改它；ready 由 embed 独设
+            if not doc or doc.status not in ("parsed", "ready"):
+                return {"status": "error", "error": "文档未就绪（状态不匹配）"}
 
             task_logger.info(f"开始 KG 构建: doc_id={doc_id}, file={doc.original_filename}")
-
-            # 更新状态：KG 构建中
-            doc.status = "kg_building"
-            doc.error_message = ""
-            session.add(doc)
+            # 不设 kg_building — KG 是辅助管线，不改文档主状态
 
         await session.commit()
 
@@ -63,7 +60,7 @@ async def _async_build_kg(doc_id: str) -> dict:
             chunks_json = await storage_service.download(f"chunks/{doc_id}.json")
             chunks_data = json.loads(chunks_json.decode("utf-8"))
         except Exception as e:
-            await _update_doc_status(doc_id, "ready", f"解析结果读取失败: {e}")
+            task_logger.error(f"KG 构建 — 解析结果读取失败 doc_id={doc_id}: {e}")
             return {"status": "error", "error": "解析结果不存在"}
 
         chunks = [Chunk.from_dict(c) for c in chunks_data]
@@ -117,12 +114,7 @@ async def _async_build_kg(doc_id: str) -> dict:
                     doc_id=doc_id,
                 )
 
-        # 5. 更新 Document 状态：KG 构建完成
-        await _update_doc_status(
-            doc_id, "ready",
-            f"KG 构建完成: entities={len(entities)}, relations={relation_count}"
-        )
-
+        # BUG-066: KG 完成不设 ready — ready 由 embed 独设，确保与 Milvus/ES 索引同步
         task_logger.info(
             f"KG 构建完成: doc_id={doc_id}, entities={len(entities)}, relations={relation_count}"
         )
@@ -134,26 +126,4 @@ async def _async_build_kg(doc_id: str) -> dict:
 
     except Exception as e:
         task_logger.error(f"KG 构建异常 doc_id={doc_id}: {e}")
-        await _update_doc_status(doc_id, "ready", f"KG 构建失败: {e}")
         raise
-
-
-async def _update_doc_status(doc_id: str, status: str, error_message: str = "") -> None:
-    """更新 Document 的 KG 构建状态"""
-    from sqlalchemy import select
-    from models.models import Document
-
-    try:
-        async with _get_db_session() as session:
-            async with session.begin():
-                result = await session.execute(
-                    select(Document).where(Document.id == doc_id)
-                )
-                doc = result.scalar_one_or_none()
-                if doc:
-                    doc.status = status
-                    doc.error_message = error_message or doc.error_message
-                    session.add(doc)
-            await session.commit()
-    except Exception as e:
-        task_logger.error(f"更新 Document 状态失败 doc_id={doc_id}: {e}")

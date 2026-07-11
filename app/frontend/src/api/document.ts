@@ -1,7 +1,7 @@
 import client from './client';
 import type { TagItem } from './tag';
 
-export type DocStatus = 'uploaded' | 'processing' | 'ready' | 'error';
+export type DocStatus = 'uploaded' | 'processing' | 'parsed' | 'ready' | 'failed';
 
 export interface DocumentItem {
   id: string;        // uuid hex from BE

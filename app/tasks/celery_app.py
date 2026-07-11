@@ -34,6 +34,18 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_soft_time_limit=settings.PARSE_TIMEOUT_SECONDS,
     task_time_limit=settings.PARSE_TIMEOUT_SECONDS + 60,
+    # W10.2: 并发与优先级调优
+    worker_concurrency=2,  # 每 worker 2 并发线程（parse + embed 并行）
+    task_default_priority=5,
+    task_queue_max_priority=10,
+    task_default_queue="default",
+    task_routes={
+        # parse 优先（用户感知最强）
+        "parse_document": {"queue": "default", "routing_key": "parse"},
+        # embed / kg 用独立队列，避免阻塞 parse
+        "embed_document": {"queue": "default", "routing_key": "embed"},
+        "build_knowledge_graph": {"queue": "default", "routing_key": "kg"},
+    },
 )
 
 

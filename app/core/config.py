@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # === 数据库 ===
     DATABASE_URL: str = "postgresql+asyncpg://officetool:officetool@localhost:5432/officetool"
     USE_SQLITE: bool = False  # 设为 True 使用 SQLite（无需外部 DB）
+    DB_POOL_SIZE: int = 20  # 连接池大小（50 QPS 需求）
+    DB_POOL_OVERFLOW: int = 10  # 连接池溢出上限
+    DB_POOL_TIMEOUT: int = 30  # 获取连接超时秒数
 
     # === Redis ===
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -70,6 +73,7 @@ class Settings(BaseSettings):
     # === 解析 ===
     PARSE_TIMEOUT_SECONDS: int = 600
     MAX_FILE_SIZE_MB: int = 200
+    KG_ENABLED: bool = True  # 设为 false 可跳过 KG 构建，加速测试
 
     # === 检索 ===
     RETRIEVER_TOP_K: int = 10

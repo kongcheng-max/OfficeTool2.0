@@ -27,3 +27,14 @@ __pycache__/
 uploads/*
 !uploads/.gitkeep
 officetool.tar.gz
+
+# Database
+*.db
+
+# Test data
+deploy/testdata/
+
+# Misc
+验收准备材料/
+scripts/
+*.docx

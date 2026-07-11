@@ -1,12 +1,87 @@
-"""安全模块 — JWT 认证 + bcrypt 密码哈希"""
+"""安全模块 — JWT 认证 + bcrypt 密码哈希 + RBAC 权限 (W11.1)"""
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from enum import StrEnum
+from functools import wraps
+from typing import Callable, Optional
 
 import bcrypt
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 
 from core.config import settings
+from core.exceptions import ForbiddenError
+
+
+# ── W11.1: RBAC 角色定义 ──────────────────────────────────────
+
+class Role(StrEnum):
+    ADMIN = "admin"
+    EDITOR = "editor"
+    VIEWER = "viewer"
+
+# 角色能力矩阵
+_ROLE_PERMISSIONS = {
+    Role.ADMIN: {
+        "kb:create", "kb:delete", "kb:update", "kb:read",
+        "doc:upload", "doc:delete", "doc:update", "doc:read",
+        "tag:manage",
+        "user:manage",  # admin 独有
+        "audit:read",   # admin 独有
+        "qa:ask",
+    },
+    Role.EDITOR: {
+        "kb:create", "kb:delete", "kb:update", "kb:read",
+        "doc:upload", "doc:delete", "doc:update", "doc:read",
+        "tag:manage",
+        "qa:ask",
+    },
+    Role.VIEWER: {
+        "kb:read", "doc:read", "qa:ask",
+    },
+}
+
+
+def has_permission(user_role: str, action: str) -> bool:
+    """检查角色是否拥有某个操作权限"""
+    perms = _ROLE_PERMISSIONS.get(Role(user_role), set())
+    return action in perms
+
+
+def require_role(*roles: str):
+    """路由装饰器 — 限制访问角色
+
+    Usage:
+        @router.post("/admin/users")
+        @require_role("admin")
+        async def manage_users(...): ...
+
+    Raises:
+        ForbiddenError: 角色不满足要求
+    """
+    allowed = set(roles)
+
+    def decorator(fn: Callable):
+        @wraps(fn)
+        async def wrapper(*args, **kwargs):
+            # 从 kwargs 找 current_user
+            user = kwargs.get("current_user")
+            if user is None:
+                raise ForbiddenError("未认证")
+            if user.role not in allowed:
+                raise ForbiddenError(
+                    f"权限不足：需要 {','.join(roles)} 角色，当前为 {user.role}"
+                )
+            return await fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def is_admin(user) -> bool:
+    return getattr(user, "role", "") == Role.ADMIN
+
+
+def is_editor_or_admin(user) -> bool:
+    return getattr(user, "role", "") in (Role.EDITOR, Role.ADMIN)
 
 
 def hash_password(password: str) -> str:

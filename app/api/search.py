@@ -9,7 +9,7 @@ from core.database import get_db
 from core.exceptions import NotFoundError
 from core.response import APIResponse
 from models.models import KnowledgeBase, User
-from services.qa_service import _hybrid_retriever
+from services.qa_service import _get_hybrid_retriever
 
 router = APIRouter(prefix="/api/v1/kb/{kb_id}/search", tags=["搜索"])
 
@@ -47,12 +47,13 @@ async def search(
     if not result.scalar_one_or_none():
         raise NotFoundError("知识库")
 
-    hits = await _hybrid_retriever.vector.retrieve(q, kb_id=kb_id, top_k=top_k)
+    retriever = _get_hybrid_retriever()
+    hits = await retriever.vector.retrieve(q, kb_id=kb_id, top_k=top_k)
     results = [_hit_to_result(h) for h in hits]
     return APIResponse.success(results)
 
 
-@router.get("/hybrid", response_model=APIResponse[list])
+@router.get("/hybrid", response_model=APIResponse[dict])
 async def hybrid_search(
     kb_id: str,
     q: str = Query(..., description="搜索关键词"),
@@ -73,7 +74,8 @@ async def hybrid_search(
     if not result.scalar_one_or_none():
         raise NotFoundError("知识库")
 
-    result = await _hybrid_retriever.retrieve(q, kb_id=kb_id, top_k=top_k, use_kg=True)
+    retriever = _get_hybrid_retriever()
+    result = await retriever.retrieve(q, kb_id=kb_id, top_k=top_k, use_kg=True)
     hits = result["hits"]
     total_sources = result.get("total_sources", {})
 

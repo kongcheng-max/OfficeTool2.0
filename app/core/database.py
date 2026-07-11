@@ -16,12 +16,14 @@ if settings.USE_SQLITE:
         connect_args={"check_same_thread": False},
     )
 else:
+    # W9.8: 使用可配置的连接池参数支持 50 QPS
     engine = create_async_engine(
         settings.DATABASE_URL,
         echo=settings.DEBUG,
-        pool_size=20,
-        max_overflow=10,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_POOL_OVERFLOW,
         pool_pre_ping=True,
+        pool_timeout=settings.DB_POOL_TIMEOUT,
     )
 
 async_session_factory = async_sessionmaker(

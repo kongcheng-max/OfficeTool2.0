@@ -56,6 +56,10 @@ class JSONParser(BaseParser):
     supported_mime_types = ["application/json"]
 
     async def parse(self, file_path: str, original_filename: str) -> List[Chunk]:
+        """JSON 解析 — 大文件递归扁平化可能较慢，用线程池隔离"""
+        return await self._run_sync_in_thread(self._parse_sync, file_path, original_filename)
+
+    def _parse_sync(self, file_path: str, original_filename: str) -> List[Chunk]:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             data = _json.load(f)
 

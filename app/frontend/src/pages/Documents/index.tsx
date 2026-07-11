@@ -92,7 +92,8 @@ const Documents: React.FC = () => {
       setData(res.items);
       setTotal(res.total);
     } catch (e: any) {
-      console.debug('[BUG-011] fetchData failed:', e?.message || e);
+      // axios interceptor handles error toast globally; page just needs cleanup
+      console.error('[Documents] fetchData failed:', e?.message || e);
     }
     setLoading(false);
   }, [kbId, page, statusFilter]);
@@ -109,7 +110,8 @@ const Documents: React.FC = () => {
       message.success('文档已删除');
       fetchData();
     } catch (e: any) {
-      console.debug('[BUG-011] handleDelete failed:', e?.message || e);
+      // axios interceptor handles error toast globally
+      console.error('[Documents] handleDelete failed:', e?.message || e);
     }
   };
 
@@ -122,7 +124,8 @@ const Documents: React.FC = () => {
       message.success(`批量上传完成：成功 ${res.success_count}，失败 ${res.failed_count}`);
       fetchData();
     } catch (e: any) {
-      console.debug('[BUG-011] handleBatchUpload failed:', e?.message || e);
+      // axios interceptor handles error toast globally
+      console.error('[Documents] handleBatchUpload failed:', e?.message || e);
     }
     setBatchUploading(false);
   };
@@ -312,9 +315,10 @@ const Documents: React.FC = () => {
           }}
           options={[
             { value: 'ready', label: '✅ 就绪' },
+            { value: 'parsed', label: '🔄 索引中' },
             { value: 'processing', label: '⏳ 解析中' },
             { value: 'uploaded', label: '📤 已上传' },
-            { value: 'error', label: '❌ 失败' },
+            { value: 'failed', label: '❌ 失败' },
           ]}
         />
       </div>

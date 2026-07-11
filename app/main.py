@@ -42,6 +42,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# W11.7: API 限流中间件（Token Bucket, 100 req/min）
+from core.rate_limit import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware)
+
+# W11.3: 操作审计日志中间件
+from core.audit import AuditMiddleware
+app.add_middleware(AuditMiddleware)
+
 # 注册异常处理
 register_exception_handlers(app)
 
@@ -54,6 +62,7 @@ from api.search import router as search_router
 from api.graph import router as graph_router
 from api.tag import router as tag_router
 from api.users import router as users_router
+from api.admin import router as admin_router  # W11.4
 
 app.include_router(auth_router)
 app.include_router(kb_router)
@@ -63,6 +72,7 @@ app.include_router(search_router)
 app.include_router(graph_router)
 app.include_router(tag_router)
 app.include_router(users_router)
+app.include_router(admin_router)  # W11.4
 
 
 @app.get("/api/health")

@@ -22,7 +22,11 @@ class TongyiLLM(BaseLLM):
     ):
         self._api_key = api_key or settings.LLM_TONGYI_API_KEY
         self._model = model or settings.LLM_TONGYI_MODEL
-        self._client = httpx.AsyncClient(timeout=60.0)
+        # W9.8: 连接池配置支持 50 QPS 并发
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=10.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+        )
 
     @property
     def model_name(self) -> str:

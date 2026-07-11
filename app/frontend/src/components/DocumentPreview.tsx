@@ -106,7 +106,8 @@ const DocumentPreview: React.FC<Props> = ({ kbId, docId, open, onClose }) => {
     }
   };
 
-  const downloadUrl = `/api/v1/kb/${kbId}/documents/${docId}/download`;
+  const token = localStorage.getItem('token');
+  const downloadUrl = `/api/v1/kb/${kbId}/documents/${docId}/download?token=${encodeURIComponent(token || '')}`;
   const isPdf = detail?.mime_type === 'application/pdf';
   const isImage = detail?.mime_type?.startsWith('image/');
 

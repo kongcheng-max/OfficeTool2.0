@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Tabs, App } from 'antd';
+import { Form, Input, Button, Card, Typography, Tabs, Alert, App } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -8,12 +8,14 @@ const { Title, Text } = Typography;
 
 const Login: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [formError, setFormError] = useState<string | null>(null);
   const { login, register, loading } = useAuthStore();
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [form] = Form.useForm();
 
   const onFinish = async (values: Record<string, string>) => {
+    setFormError(null);
     try {
       if (activeTab === 'login') {
         await login(values.username, values.password);
@@ -23,7 +25,10 @@ const Login: React.FC = () => {
       message.success(activeTab === 'login' ? '登录成功' : '注册成功');
       navigate('/');
     } catch (e: any) {
-      console.debug('[BUG-011] Login operation failed:', e?.message || e);
+      // axios interceptor already shows a toast for API errors;
+      // show an inline form error for persistent feedback
+      const errMsg = e?.response?.data?.message || e?.message || '操作失败，请重试';
+      setFormError(errMsg);
     }
   };
 
@@ -57,6 +62,16 @@ const Login: React.FC = () => {
             { key: 'register', label: '注册' },
           ]}
         />
+
+        {formError && (
+          <Alert
+            type="error"
+            message={formError}
+            closable
+            onClose={() => setFormError(null)}
+            style={{ marginBottom: 16 }}
+          />
+        )}
 
         <Form form={form} onFinish={onFinish} size="large" autoComplete="off">
           <Form.Item
