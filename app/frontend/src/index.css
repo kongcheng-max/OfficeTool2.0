@@ -1,3 +1,75 @@
+/* ============================================================
+   OfficeTool 全局样式 — 语义化 token（亮/暗成对）
+   参见 UI/docs/OfficeTool-UI设计规范.md
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --brand: #3370FF;
+  --brand-2: #4E83FD;
+  --brand-strong: #1C4AC9;
+  --halo: #EBF1FF;
+
+  --ink: #1F2329;
+  --ink-2: #646A73;
+  --ink-3: #8F959E;
+  --on-brand: #FFFFFF;
+
+  --body: #EEF0F3;
+  --paper: #FFFFFF;
+  --nav: #FBFBFC;
+  --hover: #F2F3F5;
+  --active: #EBF1FF;
+  --line: #E4E6EA;
+  --divider: #EFF0F1;
+
+  --success: #21A366;
+  --warning: #E67E00;
+  --danger: #F54A45;
+
+  --sh-sm: 0 1px 2px rgba(31,35,41,.06), 0 2px 8px rgba(31,35,41,.05);
+  --sh-md: 0 6px 24px rgba(31,35,41,.10);
+  --sh-lg: 0 24px 64px -12px rgba(31,35,41,.22);
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  --f-display: "Sora", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --f-ui: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+[data-theme="dark"] {
+  --brand: #4E83FD;
+  --brand-2: #6A97FE;
+  --brand-strong: #3D71E8;
+  --halo: rgba(78,131,253,.16);
+
+  --ink: rgba(255,255,255,.92);
+  --ink-2: rgba(255,255,255,.58);
+  --ink-3: rgba(255,255,255,.38);
+  --on-brand: #FFFFFF;
+
+  --body: #121316;
+  --paper: #202225;
+  --nav: #1A1B1E;
+  --hover: rgba(255,255,255,.06);
+  --active: rgba(78,131,253,.18);
+  --line: #33363B;
+  --divider: #2A2C30;
+
+  --success: #3BD67E;
+  --warning: #FFA53D;
+  --danger: #F76965;
+
+  --sh-sm: 0 1px 2px rgba(0,0,0,.4);
+  --sh-md: 0 6px 24px rgba(0,0,0,.5);
+  --sh-lg: 0 24px 64px -12px rgba(0,0,0,.7);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,12 +77,139 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-family: var(--f-ui);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background .3s ease, color .3s ease;
 }
 
 #root {
   height: 100vh;
+}
+
+/* 滚动条 —— 轻量、随主题 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 品牌徽标 —— 折角文档 + 图谱节点，纯 CSS 绘制 */
+.ot-mark {
+  border-radius: 12px;
+  background: linear-gradient(150deg, var(--brand-2), var(--brand-strong));
+  position: relative;
+  flex: none;
+  box-shadow: var(--sh-sm), inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.ot-mark::before {
+  content: ""; position: absolute; left: 26%; top: 22%;
+  width: 38%; height: 28%; border-radius: 2px; background: #fff;
+  clip-path: polygon(0 0, 72% 0, 100% 32%, 100% 100%, 0 100%);
+}
+.ot-mark::after {
+  content: ""; position: absolute; left: 31%; bottom: 21%;
+  width: 38%; height: 28%;
+  background:
+    radial-gradient(circle 2px at 12% 88%, #fff 96%, transparent),
+    radial-gradient(circle 2.4px at 78% 96%, #fff 96%, transparent),
+    radial-gradient(circle 2px at 46% 12%, #fff 96%, transparent);
+}
+
+/* 证据链来源卡的入场动画 */
+@keyframes ot-rise { to { opacity: 1; transform: translateY(0); } }
+.ot-rise { opacity: 0; transform: translateY(8px); animation: ot-rise .5s cubic-bezier(.4,0,.2,1) forwards; }
+
+/* Markdown 正文 —— 让 AI 回答在气泡里排版舒适 */
+.markdown-body { font-size: 14.5px; line-height: 1.72; }
+.markdown-body p { margin: 0 0 10px; }
+.markdown-body p:last-child { margin-bottom: 0; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+  font-family: var(--f-display); margin: 14px 0 8px; line-height: 1.3;
+}
+.markdown-body ul, .markdown-body ol { margin: 0 0 10px; padding-left: 22px; }
+.markdown-body li { margin: 3px 0; }
+.markdown-body code {
+  font-family: var(--f-mono); font-size: .88em;
+  background: var(--hover); padding: 1px 5px; border-radius: 5px;
+}
+.markdown-body pre {
+  background: var(--hover); padding: 12px 14px; border-radius: var(--r-md);
+  overflow-x: auto; margin: 0 0 10px;
+}
+.markdown-body pre code { background: none; padding: 0; }
+.markdown-body blockquote {
+  border-left: 3px solid var(--brand); margin: 0 0 10px;
+  padding: 2px 0 2px 12px; color: var(--ink-2);
+}
+.markdown-body a { color: var(--brand); }
+.markdown-body table { border-collapse: collapse; margin: 0 0 10px; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--line); padding: 6px 10px; }
+
+/* 知识库卡片 —— 顶部品牌色条 + 图标块 + 内联操作链接 */
+.kb-card {
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+  cursor: pointer;
+  height: 100%;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.kb-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-md);
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
+}
+.kb-card__stripe { height: 3px; background: var(--brand); }
+.kb-card__body { padding: 18px 20px 16px; }
+.kb-card__head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.kb-card__icon {
+  width: 40px; height: 40px; border-radius: var(--r-md); flex: none;
+  background: var(--halo); color: var(--brand);
+  display: grid; place-items: center; font-size: 19px;
+}
+.kb-card__titlewrap { min-width: 0; flex: 1; }
+.kb-card__title {
+  font-family: var(--f-display); font-weight: 600; font-size: 15px; color: var(--ink);
+  margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kb-card__desc {
+  margin: 3px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kb-card__meta {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  font-size: 13px; color: var(--ink-3); margin-bottom: 14px;
+}
+.kb-card__meta span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.kb-card__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.kb-chip {
+  font-size: 12px; padding: 1px 9px; border-radius: var(--r-full);
+  background: var(--hover); color: var(--ink-2);
+}
+.kb-card__divider { height: 1px; background: var(--divider); margin-bottom: 12px; }
+.kb-card__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kb-action { font-size: 13px; color: var(--ink-2); cursor: pointer; transition: color .14s ease; }
+.kb-action:hover { color: var(--brand); }
+.kb-action--primary { color: var(--brand); font-weight: 500; }
+.kb-action--danger { color: var(--danger); }
+.kb-action--danger:hover { color: var(--danger); opacity: .78; }
+.kb-sep { width: 1px; height: 11px; background: var(--line); display: inline-block; }
+.kb-taglink {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 10px;
+  font-size: 12px; color: var(--ink-3); cursor: pointer; transition: color .14s ease;
+}
+.kb-taglink:hover { color: var(--brand); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  .ot-rise { opacity: 1; transform: none; }
 }

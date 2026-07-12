@@ -265,7 +265,7 @@ async def _retrieve(
         result = await _get_hybrid_retriever().retrieve(
             question, kb_id=kb_id, top_k=top_k, use_kg=use_kg,
         )
-        all_hits = {self._hit_key(h): h for h in result["hits"]}
+        all_hits = {_hit_key(h): h for h in result["hits"]}
         total_sources = dict(result.get("total_sources", {}))
 
         # 变体扩展检索（仅 BM25，快速且互补）
@@ -276,7 +276,7 @@ async def _retrieve(
                     bm25 = BM25Retriever()
                     extra = await bm25.retrieve(v, kb_id=kb_id, top_k=5)
                     for h in extra:
-                        k = self._hit_key(h)
+                        k = _hit_key(h)
                         if k not in all_hits:
                             all_hits[k] = h
                 except Exception:
@@ -309,10 +309,27 @@ async def _retrieve(
         logger.warning(f"混合检索失败，降级为空列表: {e}")
         return []
 
-@staticmethod
 def _hit_key(hit: Dict) -> str:
     """检索结果去重 key"""
     return f"{hit.get('doc_id', '')}|{hit.get('chunk_text', '')[:80]}"
+
+
+async def _incr_qa_count(kb_id: str):
+    """递增知识库问答计数（BUG-080: 直接 SQL 更新，不依赖 Redis）"""
+    try:
+        from core.database import async_session_factory
+        from sqlalchemy import update as _sql_update
+        from models.models import KnowledgeBase as _KB
+        async with async_session_factory() as db:
+            await db.execute(
+                _sql_update(_KB)
+                .where(_KB.id == kb_id)
+                .values(qa_count=_KB.qa_count + 1)
+            )
+            await db.commit()
+    except Exception as e:
+        logger.warning(f"问答计数递增失败 kb_id={kb_id}: {e}")
+
 
 # ========================================================================
 # 公开 API: qa / qa_stream / chat / clear_conversation
@@ -370,6 +387,9 @@ async def qa(
     if hits:
         await _qa_cache.set(kb_id, question, result)
 
+    # BUG-080: 递增问答计数
+    await _incr_qa_count(kb_id)
+
     return result
 
 
@@ -422,6 +442,9 @@ async def qa_stream(
             {"type": "chunk", "text": _fallback_answer(question, hits)},
             ensure_ascii=False,
         )
+
+    # BUG-080: 递增问答计数（仅有效问答，零结果不计）
+    await _incr_qa_count(kb_id)
 
     # 4. 发送 done 事件
     yield _json.dumps({
@@ -488,6 +511,9 @@ async def chat(
         Message(role="assistant", content=answer),
     ]
     await _save_conversation(conv_id, updated)
+
+    # BUG-080: 递增问答计数
+    await _incr_qa_count(kb_id)
 
     return {
         "answer": answer,
@@ -571,6 +597,9 @@ async def chat_stream(
         Message(role="assistant", content=full_answer),
     ]
     await _save_conversation(conv_id, updated)
+
+    # BUG-080: 递增问答计数（仅有效问答，零结果不计）
+    await _incr_qa_count(kb_id)
 
     # 6. 发送 done 事件（含 conversation_id）
     yield _json.dumps({

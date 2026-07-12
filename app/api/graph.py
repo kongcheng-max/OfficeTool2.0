@@ -85,3 +85,28 @@ async def get_entity_detail(
     if not detail:
         raise NotFoundError("实体")
     return APIResponse.success(detail)
+
+
+# BUG-057: 实体最短路径查询 API
+@router.get("/path/{entity_a}/{entity_b:path}", response_model=APIResponse[dict])
+async def entity_path(
+    kb_id: str,
+    entity_a: str,
+    entity_b: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询两个实体之间的最短关系路径"""
+    result = await db.execute(
+        select(KnowledgeBase).where(
+            KnowledgeBase.id == kb_id,
+            KnowledgeBase.owner_id == current_user.id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise NotFoundError("知识库")
+
+    path = await find_path(entity_a, entity_b)
+    if not path:
+        raise NotFoundError(f"未找到 '{entity_a}' 到 '{entity_b}' 的关联路径")
+    return APIResponse.success(path)

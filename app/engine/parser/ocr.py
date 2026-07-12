@@ -109,8 +109,11 @@ class OCRParser(BaseParser):
         elif self._ocr_type == "tesseract":
             return await self._parse_tesseract(file_path, original_filename)
         else:
-            # 无可用的 OCR 引擎，返回空
-            return []
+            # BUG-063: OCR 不可用时抛出明确错误，避免静默返回空 chunks
+            raise RuntimeError(
+                "OCR 引擎不可用：PaddleOCR 和 Tesseract 均未安装。"
+                "图片/扫描 PDF 无法解析。请安装: pip install paddleocr pytesseract Pillow"
+            )
 
     async def _parse_paddle(self, file_path: str, original_filename: str) -> List[Chunk]:
         """PaddleOCR 解析"""

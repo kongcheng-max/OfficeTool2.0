@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OfficeTool · 视觉预览</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   OfficeTool — 飞书风视觉预览
+   语义化 token · 亮/暗双主题 · 证据链为签名元素
+   ============================================================ */
+
+:root {
+  /* brand */
+  --brand: #3370FF;
+  --brand-2: #4E83FD;
+  --brand-strong: #1C4AC9;
+  --halo: #EBF1FF;
+  /* ink / neutrals */
+  --ink: #1F2329;
+  --ink-2: #646A73;
+  --ink-3: #8F959E;
+  --on-brand: #FFFFFF;
+  /* surfaces */
+  --body: #EEF0F3;
+  --paper: #FFFFFF;
+  --nav: #FBFBFC;
+  --hover: #F2F3F5;
+  --active: #EBF1FF;
+  --line: #E4E6EA;
+  --divider: #EFF0F1;
+  /* status */
+  --success: #21A366;
+  --warning: #E67E00;
+  --danger: #F54A45;
+  /* entity accents (graph) */
+  --e-person: #3370FF;
+  --e-org: #0F9E8E;
+  --e-date: #C77700;
+  --e-money: #21A366;
+  --e-loc: #7C5CFF;
+  --e-term: #D6417E;
+  /* elevation */
+  --sh-sm: 0 1px 2px rgba(31,35,41,.06), 0 2px 8px rgba(31,35,41,.05);
+  --sh-md: 0 6px 24px rgba(31,35,41,.10);
+  --sh-lg: 0 24px 64px -12px rgba(31,35,41,.22);
+  --sh-window: 0 40px 120px -24px rgba(20,30,60,.30);
+  /* radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  /* type */
+  --f-display: "Sora", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --f-ui: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+[data-theme="dark"] {
+  --brand: #4E83FD;
+  --brand-2: #6A97FE;
+  --brand-strong: #3D71E8;
+  --halo: rgba(78,131,253,.16);
+  --ink: rgba(255,255,255,.92);
+  --ink-2: rgba(255,255,255,.58);
+  --ink-3: rgba(255,255,255,.38);
+  --on-brand: #FFFFFF;
+  --body: #121316;
+  --paper: #202225;
+  --nav: #1A1B1E;
+  --hover: rgba(255,255,255,.06);
+  --active: rgba(78,131,253,.18);
+  --line: #33363B;
+  --divider: #2A2C30;
+  --success: #3BD67E;
+  --warning: #FFA53D;
+  --danger: #F76965;
+  --e-person: #6A97FE;
+  --e-org: #2DD4BF;
+  --e-date: #FBBF24;
+  --e-money: #3BD67E;
+  --e-loc: #A78BFA;
+  --e-term: #F472B6;
+  --sh-sm: 0 1px 2px rgba(0,0,0,.4);
+  --sh-md: 0 6px 24px rgba(0,0,0,.5);
+  --sh-lg: 0 24px 64px -12px rgba(0,0,0,.7);
+  --sh-window: 0 40px 120px -24px rgba(0,0,0,.8);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--f-ui);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--brand) 12%, transparent), transparent),
+    var(--body);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background .4s ease, color .4s ease;
+  padding-bottom: 80px;
+}
+
+.shell { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+/* ===================== page header ===================== */
+.pagehead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 0 22px;
+  flex-wrap: wrap; gap: 16px;
+}
+.brand-lockup { display: flex; align-items: center; gap: 14px; }
+.mark {
+  width: 42px; height: 42px; border-radius: 12px; flex: none;
+  background: linear-gradient(150deg, var(--brand-2), var(--brand-strong));
+  position: relative; box-shadow: var(--sh-sm), inset 0 0 0 1px rgba(255,255,255,.12);
+}
+/* folded-corner doc + graph nodes, drawn in CSS */
+.mark::before {
+  content: ""; position: absolute; left: 11px; top: 9px;
+  width: 16px; height: 12px; border-radius: 2px;
+  background: #fff;
+  clip-path: polygon(0 0, 72% 0, 100% 32%, 100% 100%, 0 100%);
+}
+.mark::after {
+  content: ""; position: absolute; left: 13px; bottom: 9px;
+  width: 16px; height: 12px;
+  background:
+    radial-gradient(circle 2.1px at 3px 9px, #fff 96%, transparent),
+    radial-gradient(circle 2.6px at 12px 10px, #fff 96%, transparent),
+    radial-gradient(circle 2.1px at 8px 2px, #fff 96%, transparent);
+}
+.brand-lockup .name { font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: -.01em; }
+.brand-lockup .sub { font-size: 12px; color: var(--ink-2); letter-spacing: .04em; }
+
+.head-actions { display: flex; align-items: center; gap: 10px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 38px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: border-color .16s ease, color .16s ease, transform .16s ease;
+}
+.pill:hover { border-color: var(--brand); color: var(--brand); transform: translateY(-1px); }
+.pill svg { width: 15px; height: 15px; }
+
+/* ===================== hero copy ===================== */
+.hero-copy { max-width: 760px; margin: 8px 0 26px; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--f-mono); font-size: 11.5px; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--brand);
+  padding: 5px 10px; border-radius: 999px; background: var(--halo);
+  margin-bottom: 16px;
+}
+.eyebrow .tick { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+.hero-copy h1 {
+  font-family: var(--f-display); font-weight: 700;
+  font-size: clamp(28px, 4.4vw, 46px); line-height: 1.12; letter-spacing: -.02em;
+}
+.hero-copy h1 .grad {
+  background: linear-gradient(100deg, var(--brand-2), var(--brand-strong));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero-copy p { margin-top: 14px; font-size: 15.5px; color: var(--ink-2); max-width: 620px; }
+
+/* ===================== the app window ===================== */
+.window {
+  border-radius: var(--r-xl);
+  background: var(--paper);
+  box-shadow: var(--sh-window);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.win-chrome {
+  height: 40px; display: flex; align-items: center; gap: 8px;
+  padding: 0 16px; border-bottom: 1px solid var(--divider);
+  background: var(--nav);
+}
+.win-chrome .dot { width: 11px; height: 11px; border-radius: 50%; }
+.win-chrome .dot:nth-child(1) { background: #FF5F57; }
+.win-chrome .dot:nth-child(2) { background: #FEBC2E; }
+.win-chrome .dot:nth-child(3) { background: #28C840; }
+.win-chrome .addr {
+  margin-left: 14px; font-family: var(--f-mono); font-size: 11.5px; color: var(--ink-3);
+}
+
+.app { display: grid; grid-template-columns: 68px 268px 1fr; min-height: 560px; }
+
+/* icon rail */
+.rail {
+  background: var(--nav); border-right: 1px solid var(--divider);
+  display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 4px;
+}
+.rail .mark { width: 34px; height: 34px; border-radius: 10px; margin-bottom: 14px; }
+.rail .mark::before { left: 9px; top: 7px; width: 13px; height: 10px; }
+.rail .mark::after { left: 10.5px; bottom: 7px; width: 13px; height: 10px; }
+.ico {
+  width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center;
+  color: var(--ink-3); cursor: pointer; position: relative;
+  transition: background .16s ease, color .16s ease;
+}
+.ico svg { width: 21px; height: 21px; }
+.ico:hover { background: var(--hover); color: var(--ink-2); }
+.ico.on { color: var(--brand); background: var(--active); }
+.ico.on::before {
+  content: ""; position: absolute; left: -16px; top: 11px; bottom: 11px;
+  width: 3px; border-radius: 0 3px 3px 0; background: var(--brand);
+}
+.rail .spacer { flex: 1; }
+.rail .me {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(140deg, var(--e-org), var(--brand));
+  color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px;
+  cursor: pointer;
+}
+
+/* secondary list */
+.aside {
+  background: var(--paper); border-right: 1px solid var(--divider);
+  display: flex; flex-direction: column;
+}
+.aside-head { padding: 18px 18px 12px; display: flex; align-items: center; justify-content: space-between; }
+.aside-head h3 { font-family: var(--f-display); font-size: 15px; font-weight: 600; }
+.newbtn {
+  width: 26px; height: 26px; border-radius: 8px; border: none; cursor: pointer;
+  background: var(--brand); color: #fff; display: grid; place-items: center;
+  font-size: 16px; line-height: 1; transition: background .16s ease;
+}
+.newbtn:hover { background: var(--brand-2); }
+.search {
+  margin: 0 18px 12px; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+  background: var(--body); display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  color: var(--ink-3); font-size: 13px;
+}
+.search svg { width: 14px; height: 14px; }
+.conv-group { padding: 4px 10px; }
+.conv-group .lbl {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--ink-3);
+  text-transform: uppercase; padding: 8px 8px 4px;
+}
+.conv {
+  padding: 9px 10px; border-radius: 9px; cursor: pointer; margin-bottom: 1px;
+  display: flex; flex-direction: column; gap: 2px; transition: background .14s ease;
+}
+.conv:hover { background: var(--hover); }
+.conv.on { background: var(--active); }
+.conv .t { font-size: 13.5px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv.on .t { color: var(--brand); }
+.conv .m { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* main content */
+.main { display: flex; flex-direction: column; background: var(--body); }
+.topbar {
+  height: 54px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; border-bottom: 1px solid var(--divider); background: var(--paper);
+}
+.crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.crumb b { color: var(--ink); font-weight: 600; }
+.crumb .sep { color: var(--ink-3); }
+.kb-tag {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+  padding: 3px 9px; border-radius: 999px; background: var(--halo); color: var(--brand); font-weight: 500;
+}
+.top-right { display: flex; align-items: center; gap: 8px; }
+.iconbtn {
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid transparent;
+  background: transparent; color: var(--ink-2); cursor: pointer; display: grid; place-items: center;
+  transition: background .14s ease;
+}
+.iconbtn:hover { background: var(--hover); }
+.iconbtn svg { width: 17px; height: 17px; }
+
+.canvas { flex: 1; overflow: hidden; padding: 26px 30px; }
+
+/* ---- the conversation / evidence chain (SIGNATURE) ---- */
+.qa { max-width: 720px; }
+.ask { display: flex; justify-content: flex-end; margin-bottom: 22px; }
+.ask .q {
+  background: var(--brand); color: var(--on-brand); font-size: 14.5px; font-weight: 500;
+  padding: 11px 16px; border-radius: 14px 14px 4px 14px; box-shadow: var(--sh-sm);
+  max-width: 80%;
+}
+.answer { display: flex; gap: 12px; }
+.answer .ava {
+  width: 34px; height: 34px; border-radius: 10px; flex: none; margin-top: 2px;
+  background: linear-gradient(150deg, var(--brand-2), var(--brand-strong));
+  display: grid; place-items: center; box-shadow: var(--sh-sm);
+}
+.answer .ava svg { width: 18px; height: 18px; color: #fff; }
+.answer .body { flex: 1; min-width: 0; }
+.ans-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ans-meta .who { font-family: var(--f-display); font-weight: 600; font-size: 13.5px; }
+.conf {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-2);
+  padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line);
+}
+.conf .segs { display: inline-flex; gap: 2px; }
+.conf .seg { width: 4px; height: 10px; border-radius: 1px; background: var(--divider); }
+.conf .seg.f { background: var(--success); }
+.conf b { color: var(--success); font-weight: 600; }
+
+.ans-text {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 4px 14px 14px 14px;
+  padding: 15px 17px; font-size: 14.5px; line-height: 1.72; color: var(--ink);
+  box-shadow: var(--sh-sm);
+}
+.ans-text mark {
+  background: var(--halo); color: var(--brand); padding: 0 3px; border-radius: 3px; font-weight: 500;
+}
+.ans-text .cite {
+  font-family: var(--f-mono); font-size: 11px; color: var(--brand); vertical-align: super;
+  cursor: pointer; padding: 0 1px;
+}
+
+/* evidence chain */
+.evidence { margin: 14px 0 0 0; padding-left: 4px; }
+.ev-title {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+  color: var(--ink-2); letter-spacing: .04em; margin-bottom: 12px;
+}
+.ev-title .ln { height: 1px; flex: 1; background: var(--divider); }
+.ev-track { position: relative; padding-left: 22px; }
+.ev-track::before {
+  content: ""; position: absolute; left: 5px; top: 4px; bottom: 10px; width: 2px;
+  background: linear-gradient(var(--brand), color-mix(in srgb, var(--brand) 20%, transparent));
+  border-radius: 2px;
+}
+.src {
+  position: relative; background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 10px;
+  box-shadow: var(--sh-sm); transition: transform .16s ease, border-color .16s ease;
+  opacity: 0; transform: translateY(8px);
+  animation: rise .5s cubic-bezier(.4,0,.2,1) forwards;
+}
+.src:nth-child(1) { animation-delay: .35s; }
+.src:nth-child(2) { animation-delay: .5s; }
+.src:hover { transform: translateX(2px); border-color: var(--brand); }
+.src::before {
+  content: ""; position: absolute; left: -22px; top: 16px;
+  width: 12px; height: 12px; border-radius: 50%; background: var(--paper);
+  border: 2.5px solid var(--brand); box-shadow: 0 0 0 4px var(--body);
+}
+.src-top { display: flex; align-items: center; gap: 9px; }
+.doc-ico { width: 26px; height: 26px; border-radius: 7px; background: var(--halo); display: grid; place-items: center; flex: none; }
+.doc-ico svg { width: 14px; height: 14px; color: var(--brand); }
+.src-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rel { font-family: var(--f-mono); font-size: 12px; font-weight: 500; color: var(--success); }
+.src-meta { display: flex; align-items: center; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+.chip {
+  font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; letter-spacing: .02em;
+}
+.chip.page { background: var(--hover); color: var(--ink-2); font-family: var(--f-mono); }
+.chip.vec { background: var(--halo); color: var(--brand); }
+.chip.bm { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+.chip.kg { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.src-excerpt { margin-top: 9px; font-size: 12.5px; color: var(--ink-2); line-height: 1.6; border-left: 2px solid var(--divider); padding-left: 10px; }
+
+/* composer */
+.composer {
+  margin-top: 20px; display: flex; align-items: center; gap: 10px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  padding: 8px 8px 8px 16px; box-shadow: var(--sh-sm); max-width: 720px;
+}
+.composer .ph { flex: 1; color: var(--ink-3); font-size: 14px; }
+.send {
+  width: 38px; height: 38px; border-radius: 10px; border: none; cursor: pointer;
+  background: var(--brand); color: #fff; display: grid; place-items: center;
+  transition: background .16s ease;
+}
+.send:hover { background: var(--brand-2); }
+.send svg { width: 17px; height: 17px; }
+.suggest { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.sugg {
+  font-size: 12.5px; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px dashed var(--line); color: var(--ink-2); background: transparent;
+  transition: border-color .14s ease, color .14s ease;
+}
+.sugg:hover { border-color: var(--brand); color: var(--brand); border-style: solid; }
+
+@keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
+/* ===================== design language section ===================== */
+.dl { margin-top: 72px; }
+.dl-head { text-align: center; margin-bottom: 34px; }
+.dl-head .eyebrow { margin-bottom: 14px; }
+.dl-head h2 { font-family: var(--f-display); font-size: clamp(24px, 3vw, 32px); font-weight: 700; letter-spacing: -.02em; }
+.dl-head p { color: var(--ink-2); margin-top: 8px; }
+
+.dl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.panel {
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 22px; box-shadow: var(--sh-sm);
+}
+.panel h4 {
+  font-family: var(--f-display); font-size: 12px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px;
+}
+.span2 { grid-column: 1 / -1; }
+
+/* palette */
+.pal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.pal .sw { border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--line); }
+.pal .cap { height: 52px; }
+.pal .txt { padding: 7px 8px; }
+.pal .n { font-size: 11px; font-weight: 600; }
+.pal .v { font-family: var(--f-mono); font-size: 10px; color: var(--ink-3); }
+
+/* type scale */
+.tscale > div { padding: 9px 0; border-bottom: 1px solid var(--divider); display: flex; align-items: baseline; gap: 16px; }
+.tscale > div:last-child { border-bottom: 0; }
+.tscale .tag { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-3); width: 118px; flex: none; }
+.s-display { font-family: var(--f-display); font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.s-h1 { font-family: var(--f-display); font-size: 22px; font-weight: 600; }
+.s-h2 { font-family: var(--f-display); font-size: 17px; font-weight: 600; }
+.s-body { font-size: 14px; }
+.s-cap { font-size: 12px; color: var(--ink-2); }
+.s-mono { font-family: var(--f-mono); font-size: 13px; }
+
+/* buttons / controls */
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn {
+  height: 34px; padding: 0 16px; border-radius: 9px; font-size: 13.5px; font-weight: 500;
+  cursor: pointer; border: 1px solid transparent; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px; transition: all .14s ease;
+}
+.b-primary { background: var(--brand); color: #fff; }
+.b-primary:hover { background: var(--brand-2); }
+.b-ghost { background: var(--paper); border-color: var(--line); color: var(--ink); }
+.b-ghost:hover { border-color: var(--brand); color: var(--brand); }
+.b-text { background: transparent; color: var(--ink); }
+.b-text:hover { background: var(--hover); }
+.b-danger { background: var(--danger); color: #fff; }
+.b-mute { background: var(--hover); color: var(--ink-3); cursor: not-allowed; }
+
+.tag2 { font-size: 12px; padding: 3px 10px; border-radius: 999px; font-weight: 500; }
+.t-vec { background: var(--halo); color: var(--brand); }
+.t-ok { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+.t-warn { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.t-err { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+
+.stat { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
+.stat .d { width: 8px; height: 8px; border-radius: 50%; }
+
+/* entity legend */
+.ents { display: flex; flex-wrap: wrap; gap: 16px; }
+.ent { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
+.ent .d { width: 10px; height: 10px; border-radius: 50%; }
+
+.foot { text-align: center; margin-top: 46px; color: var(--ink-3); font-size: 12.5px; }
+.foot code { font-family: var(--f-mono); background: var(--paper); border: 1px solid var(--line); padding: 2px 7px; border-radius: 6px; color: var(--ink-2); }
+
+/* ===================== responsive ===================== */
+@media (max-width: 980px) {
+  .app { grid-template-columns: 62px 1fr; }
+  .aside { display: none; }
+  .dl-grid { grid-template-columns: 1fr; }
+  .pal { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 560px) {
+  .canvas { padding: 18px; }
+  .win-chrome .addr { display: none; }
+  .pal { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .src { opacity: 1; transform: none; }
+}
+
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- page header -->
+  <header class="pagehead">
+    <div class="brand-lockup">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <div class="name">OfficeTool</div>
+        <div class="sub">企业文档智能解析 · 视觉预览</div>
+      </div>
+    </div>
+    <div class="head-actions">
+      <a class="pill" href="#design">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="13" r="2.5"/><circle cx="8.5" cy="17.5" r="2.5"/><circle cx="6.5" cy="10" r="2.5"/></svg>
+        设计规范
+      </a>
+      <button class="pill" id="toggle" aria-label="切换主题">
+        <span id="tico">☾</span><span id="ttxt">暗色</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- hero copy -->
+  <div class="hero-copy">
+    <span class="eyebrow"><span class="tick"></span>飞书风 · 可追溯的答案</span>
+    <h1>把文档，<span class="grad">解析成可信的答案</span></h1>
+    <p>OfficeTool 解析你的合同、制度与研报，用检索增强生成回答问题——每一句结论都连回它的文档来源。下面是问答界面的真实设计预览，右上角可切换亮 / 暗主题。</p>
+  </div>
+
+  <!-- ===== the app window ===== -->
+  <div class="window">
+    <div class="win-chrome">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="addr">officetool.app / 合同库 / 问答</span>
+    </div>
+
+    <div class="app">
+      <!-- icon rail -->
+      <nav class="rail" aria-label="主导航">
+        <div class="mark" aria-hidden="true"></div>
+        <div class="ico" title="主页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg></div>
+        <div class="ico" title="知识库"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M9 4v16"/></svg></div>
+        <div class="ico on" title="问答"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-4 3z"/></svg></div>
+        <div class="ico" title="知识图谱"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="17" r="2.4"/><path d="M7.8 8.4 10.5 15M14.2 7.3 8 6.6M16.5 8l-3.6 7"/></svg></div>
+        <div class="ico" title="团队"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 6.5a3 3 0 0 1 0 5.5M21 20c0-2.3-1.3-4.3-3.2-5.3"/></svg></div>
+        <div class="spacer"></div>
+        <div class="ico" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg></div>
+        <div class="me" title="张律">张</div>
+      </nav>
+
+      <!-- secondary list -->
+      <aside class="aside">
+        <div class="aside-head">
+          <h3>会话</h3>
+          <button class="newbtn" title="新会话">+</button>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+          搜索会话
+        </div>
+        <div class="conv-group">
+          <div class="lbl">今天</div>
+          <div class="conv on"><span class="t">逾期交付的违约责任</span><span class="m">乙方逾期交付如何认定…</span></div>
+          <div class="conv"><span class="t">付款节点梳理</span><span class="m">三期付款分别是…</span></div>
+          <div class="conv"><span class="t">保密条款范围</span><span class="m">哪些信息属于保密…</span></div>
+        </div>
+        <div class="conv-group">
+          <div class="lbl">更早</div>
+          <div class="conv"><span class="t">验收标准与异议期</span><span class="m">验收不合格时…</span></div>
+          <div class="conv"><span class="t">不可抗力约定</span><span class="m">哪些情形可免责…</span></div>
+        </div>
+      </aside>
+
+      <!-- main -->
+      <div class="main">
+        <div class="topbar">
+          <div class="crumb">
+            <span>问答</span><span class="sep">/</span><b>逾期交付的违约责任</b>
+            <span class="kb-tag">📁 合同库</span>
+          </div>
+          <div class="top-right">
+            <button class="iconbtn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg></button>
+            <button class="iconbtn" title="分享"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg></button>
+          </div>
+        </div>
+
+        <div class="canvas">
+          <div class="qa">
+            <!-- question -->
+            <div class="ask"><div class="q">乙方逾期交付货物的，违约责任怎么认定？</div></div>
+
+            <!-- answer + evidence chain (signature) -->
+            <div class="answer">
+              <div class="ava"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v3M5 8h14v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><circle cx="9.5" cy="13" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="13" r="1.1" fill="currentColor" stroke="none"/></svg></div>
+              <div class="body">
+                <div class="ans-meta">
+                  <span class="who">OfficeTool</span>
+                  <span class="conf">
+                    置信度
+                    <span class="segs"><i class="seg f"></i><i class="seg f"></i><i class="seg f"></i><i class="seg"></i></span>
+                    <b>高</b>
+                  </span>
+                </div>
+
+                <div class="ans-text">
+                  依据《采购合同》约定，乙方逾期交付的，应<mark>按逾期交付部分货款每日万分之五</mark>向甲方支付违约金<span class="cite">[1]</span>；逾期超过 <mark>30 日</mark> 的，甲方有权解除合同并要求赔偿由此造成的实际损失<span class="cite">[2]</span>。违约金与损失赔偿可一并主张，但总额以合同总价款为限。
+                </div>
+
+                <!-- evidence chain -->
+                <div class="evidence">
+                  <div class="ev-title">证据链 · 2 处来源<span class="ln"></span></div>
+                  <div class="ev-track">
+                    <div class="src">
+                      <div class="src-top">
+                        <span class="doc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span>
+                        <span class="src-name">采购合同-2024.pdf</span>
+                        <span class="rel">相关度 94%</span>
+                      </div>
+                      <div class="src-meta">
+                        <span class="chip page">第 9.2 条 · p.12</span>
+                        <span class="chip vec">向量</span>
+                        <span class="chip kg">图谱</span>
+                      </div>
+                      <div class="src-excerpt">"……乙方每逾期交付一日，应按逾期部分货款的万分之五向甲方支付违约金。"</div>
+                    </div>
+                    <div class="src">
+                      <div class="src-top">
+                        <span class="doc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span>
+                        <span class="src-name">补充协议-第二版.docx</span>
+                        <span class="rel">相关度 88%</span>
+                      </div>
+                      <div class="src-meta">
+                        <span class="chip page">第 3 条 · p.3</span>
+                        <span class="chip bm">关键词</span>
+                      </div>
+                      <div class="src-excerpt">"……逾期交付超过三十日的，甲方有权单方解除本合同并主张实际损失赔偿。"</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- composer -->
+                <div class="composer">
+                  <span class="ph">追问，例如「违约金上限是多少？」</span>
+                  <button class="send" title="发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>
+                </div>
+                <div class="suggest">
+                  <span class="sugg">违约金有上限吗？</span>
+                  <span class="sugg">如何主张实际损失？</span>
+                  <span class="sugg">解除合同的通知期</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== design language reference ===== -->
+  <section class="dl" id="design">
+    <div class="dl-head">
+      <span class="eyebrow"><span class="tick"></span>设计语言</span>
+      <h2>同一套语义 token，两种主题</h2>
+      <p>下面所有色块、字号与组件都由同一组语义变量驱动，切换主题时一并变化。</p>
+    </div>
+
+    <div class="dl-grid">
+      <!-- palette -->
+      <div class="panel span2">
+        <h4>色彩 · Palette</h4>
+        <div class="pal" id="pal"></div>
+      </div>
+
+      <!-- type -->
+      <div class="panel">
+        <h4>字体 · Sora + Inter + JetBrains Mono</h4>
+        <div class="tscale">
+          <div><span class="tag">display 30</span><span class="s-display">解析成答案</span></div>
+          <div><span class="tag">h1 22</span><span class="s-h1">合同库 · 问答</span></div>
+          <div><span class="tag">h2 17</span><span class="s-h2">最近的会话</span></div>
+          <div><span class="tag">body 14</span><span class="s-body">正文默认字号，用于回答与说明。</span></div>
+          <div><span class="tag">caption 12</span><span class="s-cap">更新于 2026-07-11 · 348 个文档</span></div>
+          <div><span class="tag">mono 13</span><span class="s-mono">相关度 94% · p.12</span></div>
+        </div>
+      </div>
+
+      <!-- controls -->
+      <div class="panel">
+        <h4>控件 · Controls</h4>
+        <div class="row" style="margin-bottom:16px;">
+          <button class="btn b-primary">发送</button>
+          <button class="btn b-ghost">文档管理</button>
+          <button class="btn b-text">取消</button>
+          <button class="btn b-danger">删除</button>
+          <button class="btn b-mute" disabled>处理中</button>
+        </div>
+        <div class="row" style="margin-bottom:16px;">
+          <span class="tag2 t-vec">向量</span>
+          <span class="tag2 t-ok">关键词</span>
+          <span class="tag2 t-warn">图谱</span>
+          <span class="tag2 t-err">已过期</span>
+        </div>
+        <div class="row">
+          <span class="stat"><span class="d" style="background:var(--success)"></span>就绪</span>
+          <span class="stat"><span class="d" style="background:var(--warning)"></span>处理中</span>
+          <span class="stat"><span class="d" style="background:var(--ink-3)"></span>待解析</span>
+          <span class="stat"><span class="d" style="background:var(--danger)"></span>失败</span>
+        </div>
+      </div>
+
+      <!-- entity colors -->
+      <div class="panel span2">
+        <h4>知识图谱实体色 · 校准后统一层级</h4>
+        <div class="ents">
+          <span class="ent"><span class="d" style="background:var(--e-person)"></span>PERSON 人物</span>
+          <span class="ent"><span class="d" style="background:var(--e-org)"></span>ORG 组织</span>
+          <span class="ent"><span class="d" style="background:var(--e-date)"></span>DATE 日期</span>
+          <span class="ent"><span class="d" style="background:var(--e-money)"></span>MONEY 金额</span>
+          <span class="ent"><span class="d" style="background:var(--e-loc)"></span>LOCATION 地点</span>
+          <span class="ent"><span class="d" style="background:var(--e-term)"></span>TERM 术语</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">配套完整设计规范见 <code>UI/docs/OfficeTool-UI设计规范.md</code> · 本页为静态预览，可离线打开</div>
+  </section>
+
+</div>
+
+<script>
+  // ---- palette data ----
+  var PAL = [
+    ['主色 brand', '--brand'],
+    ['主色浅底 halo', '--halo'],
+    ['正文 ink', '--ink'],
+    ['次要 ink-2', '--ink-2'],
+    ['页面底 body', '--body'],
+    ['容器 paper', '--paper'],
+    ['成功 success', '--success'],
+    ['警告 warning', '--warning'],
+    ['危险 danger', '--danger'],
+    ['边框 line', '--line'],
+    ['悬浮 hover', '--hover'],
+    ['组织 org', '--e-org'],
+  ];
+  function renderPal() {
+    var cs = getComputedStyle(document.documentElement);
+    document.getElementById('pal').innerHTML = PAL.map(function (c) {
+      var v = cs.getPropertyValue(c[1]).trim();
+      return '<div class="sw"><div class="cap" style="background:var(' + c[1] + ')"></div>' +
+             '<div class="txt"><div class="n">' + c[0] + '</div><div class="v">' + v + '</div></div></div>';
+    }).join('');
+  }
+  // ---- theme toggle ----
+  var t = document.getElementById('toggle'),
+      ic = document.getElementById('tico'),
+      tx = document.getElementById('ttxt');
+  t.addEventListener('click', function () {
+    var html = document.documentElement;
+    var dark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', dark ? 'light' : 'dark');
+    ic.textContent = dark ? '☾' : '☀';
+    tx.textContent = dark ? '暗色' : '亮色';
+    renderPal();
+  });
+  renderPal();
+</script>
+
+</body>
+</html>

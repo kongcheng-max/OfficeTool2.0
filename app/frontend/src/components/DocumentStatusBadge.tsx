@@ -17,11 +17,11 @@ const statusConfig: Record<
   DocStatus,
   { color: string; icon: React.ReactNode; label: string }
 > = {
-  uploaded: { color: '#1677FF', icon: <UploadOutlined />, label: '已上传' },
-  processing: { color: '#FAAD14', icon: <ClockCircleOutlined />, label: '解析中' },
-  parsed: { color: '#FA8C16', icon: <SyncOutlined spin />, label: '索引中' },
-  ready: { color: '#52C41A', icon: <CheckCircleOutlined />, label: '就绪' },
-  failed: { color: '#FF4D4F', icon: <CloseCircleOutlined />, label: '失败' },
+  uploaded: { color: '#3370FF', icon: <UploadOutlined />, label: '已上传' },
+  processing: { color: '#E67E00', icon: <ClockCircleOutlined />, label: '解析中' },
+  parsed: { color: '#C77700', icon: <SyncOutlined spin />, label: '索引中' },
+  ready: { color: '#21A366', icon: <CheckCircleOutlined />, label: '就绪' },
+  failed: { color: '#F54A45', icon: <CloseCircleOutlined />, label: '失败' },
 };
 
 const DocumentStatusBadge: React.FC<Props> = ({ status }) => {

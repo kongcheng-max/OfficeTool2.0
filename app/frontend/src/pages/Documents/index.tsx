@@ -138,7 +138,8 @@ const Documents: React.FC = () => {
       message.success(`ZIP 导入完成：成功 ${res.success_count}，失败 ${res.failed_count}`);
       fetchData();
     } catch (e: any) {
-      console.debug('[BUG-011] handleZipImport failed:', e?.message || e);
+      // axios interceptor handles error toast globally
+      console.error('[Documents] handleZipImport failed:', e?.message || e);
     }
     setBatchUploading(false);
   };
@@ -231,7 +232,7 @@ const Documents: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div style={{ padding: 24 }}>
       <div
         style={{
           display: 'flex',
@@ -240,7 +241,7 @@ const Documents: React.FC = () => {
           marginBottom: 24,
         }}
       >
-        <Title level={4} style={{ margin: 0 }}>
+        <Title level={3} style={{ margin: 0, fontFamily: 'var(--f-display)' }}>
           文档管理
         </Title>
         <Space>
@@ -445,11 +446,11 @@ const Documents: React.FC = () => {
 
         {/* Batch result */}
         {batchResult && (
-          <div style={{ marginTop: 16, padding: 12, background: '#fafafa', borderRadius: 8 }}>
+          <div style={{ marginTop: 16, padding: 12, background: 'var(--hover)', borderRadius: 8 }}>
             <Text strong>结果：</Text>
             <Space size={16} style={{ marginLeft: 8 }}>
-              <Text style={{ color: '#52C41A' }}>✅ 成功 {batchResult.success_count}</Text>
-              <Text style={{ color: '#FF4D4F' }}>❌ 失败 {batchResult.failed_count}</Text>
+              <Text style={{ color: 'var(--success)' }}>✅ 成功 {batchResult.success_count}</Text>
+              <Text style={{ color: 'var(--danger)' }}>❌ 失败 {batchResult.failed_count}</Text>
               <Text type="secondary">⏭️ 跳过 {batchResult.skipped_count}</Text>
             </Space>
           </div>

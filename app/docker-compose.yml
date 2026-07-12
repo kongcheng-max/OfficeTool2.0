@@ -172,7 +172,7 @@ services:
   celery-worker:
     build: .
     container_name: officetool-celery
-    command: celery -A tasks.celery_app worker --loglevel=info --pool=threads --concurrency=4
+    command: celery -A tasks.celery_app worker --loglevel=info --pool=threads --concurrency=8
     depends_on:
       postgres:
         condition: service_healthy

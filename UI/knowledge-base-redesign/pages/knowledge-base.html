@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库管理</title>
+    <style id="theme-vars">
+:root {
+  /* ===== Color System ===== */
+  --color-primary: #3B7DDD;
+  --color-primary-light: #5B9BF0;
+  --color-primary-lighter: #E8F1FE;
+  --color-primary-dark: #2A5DB3;
+
+  --color-bg: #F0F2F5;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-sidebar: #FAFBFC;
+
+  --color-text-primary: #1D2129;
+  --color-text-secondary: #4E5969;
+  --color-text-tertiary: #86909C;
+  --color-text-placeholder: #C9CDD4;
+
+  --color-border: #E5E6EB;
+  --color-border-light: #F2F3F5;
+  --color-divider: #E5E6EB;
+
+  --color-danger: #F53F3F;
+  --color-danger-light: #FEECEC;
+
+  --color-success: #00B42A;
+  --color-warning: #FF7D00;
+  --color-info: #3B7DDD;
+
+  --color-hover-overlay: rgba(0, 0, 0, 0.04);
+
+  /* ===== Typography System ===== */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-family-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 28px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.02em;
+
+  /* ===== Spacing Scale ===== */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ===== Radius Scale ===== */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ===== Shadow System ===== */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Typography Classes ===== */
+.text-xs { font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
+.text-sm { font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
+.text-base { font-size: var(--font-size-base); line-height: var(--line-height-normal); }
+.text-md { font-size: var(--font-size-md); line-height: var(--line-height-normal); }
+.text-lg { font-size: var(--font-size-lg); line-height: var(--line-height-normal); }
+.text-xl { font-size: var(--font-size-xl); line-height: var(--line-height-normal); }
+.text-2xl { font-size: var(--font-size-2xl); line-height: var(--line-height-tight); }
+.text-3xl { font-size: var(--font-size-3xl); line-height: var(--line-height-tight); }
+.text-4xl { font-size: var(--font-size-4xl); line-height: var(--line-height-tight); }
+
+.font-normal { font-weight: var(--font-weight-normal); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-primary: var(--color-primary);
+    --color-border: var(--color-border);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-text-primary); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="background:var(--color-bg);color:var(--color-text-primary);font-family:var(--font-family);">
+
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 bottom-0 w-[240px] flex flex-col border-r z-30 transition-transform duration-300 lg:translate-x-0 -translate-x-full" style="background:var(--color-bg-elevated);border-color:var(--color-border);">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-6 h-[60px] border-b shrink-0" style="border-color:var(--color-border-light);">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--color-primary);">
+                <i data-lucide="book-open" class="w-[18px] h-[18px]" style="color:var(--color-bg-elevated);"></i>
+            </div>
+            <span class="font-semibold text-[16px] truncate" style="color:var(--color-text-primary);">知识库</span>
+        </div>
+
+        <!-- Nav list -->
+        <nav class="flex-1 overflow-y-auto no-scrollbar py-3 px-3">
+            <div class="text-[11px] font-medium uppercase tracking-wider px-3 mb-2" style="color:var(--color-text-tertiary);">知识库列表</div>
+            <ul class="space-y-0.5">
+                <li>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors duration-150" style="background:var(--color-primary-lighter);color:var(--color-primary);font-weight:500;">
+                        <i data-lucide="database" class="w-[16px] h-[16px] shrink-0" style="color:var(--color-primary);"></i>
+                        <span class="truncate">第三阶段测试</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-secondary);">
+                        <i data-lucide="database" class="w-[16px] h-[16px] shrink-0" style="color:var(--color-text-tertiary);"></i>
+                        <span class="truncate">第二阶段测试知识库v2.0</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-secondary);">
+                        <i data-lucide="database" class="w-[16px] h-[16px] shrink-0" style="color:var(--color-text-tertiary);"></i>
+                        <span class="truncate">第二阶段测试知识库</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-secondary);">
+                        <i data-lucide="database" class="w-[16px] h-[16px] shrink-0" style="color:var(--color-text-tertiary);"></i>
+                        <span class="truncate">测试</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-secondary);">
+                        <i data-lucide="database" class="w-[16px] h-[16px] shrink-0" style="color:var(--color-text-tertiary);"></i>
+                        <span class="truncate">AI学习笔记</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Bottom bar -->
+        <div class="flex items-center gap-2 px-4 py-3 border-t shrink-0" style="border-color:var(--color-border-light);">
+            <button class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-tertiary);">
+                <i data-lucide="help-circle" class="w-[18px] h-[18px]"></i>
+            </button>
+            <button class="relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-tertiary);">
+                <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+                <span class="absolute top-1 right-1 w-2 h-2 rounded-full" style="background:var(--color-danger);"></span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile sidebar overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/30 z-20 hidden lg:hidden" style="backdrop-filter:blur(2px);"></div>
+
+    <!-- Main content area -->
+    <div class="lg:ml-[240px] min-h-screen flex flex-col">
+
+        <!-- Top header bar -->
+        <header class="sticky top-0 z-10 flex items-center justify-between h-[56px] px-6 border-b shrink-0" style="background:var(--color-bg-elevated);border-color:var(--color-border);">
+            <!-- Left: hamburger + breadcrumb -->
+            <div class="flex items-center gap-3">
+                <button id="menu-toggle" class="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 hover:bg-[var(--color-hover-overlay)]" style="color:var(--color-text-secondary);">
+                    <i data-lucide="menu" class="w-[20px] h-[20px]"></i>
+                </button>
+                <nav class="flex items-center gap-1.5 text-sm" style="color:var(--color-text-tertiary);">
+                    <a href="#" class="transition-colors duration-150 hover:text-[var(--color-primary)]" style="color:var(--color-text-secondary);">首页</a>
+                    <i data-lucide="chevron-right" class="w-[14px] h-[14px]"></i>
+                    <span style="color:var(--color-text-primary);font-weight:500;">知识库</span>
+                </nav>
+            </div>
+            <!-- Right: user avatar -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium" style="background:var(--color-primary);color:var(--color-bg-elevated);">
+                    123
+                </div>
+            </div>
+        </header>
+
+        <!-- Page content -->
+        <main class="flex-1 p-6 lg:p-8">
+
+            <!-- Page header -->
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-semibold tracking-tight" style="color:var(--color-text-primary);font-size:var(--font-size-3xl);font-weight:var(--font-weight-semibold);text-wrap:balance;word-break:keep-all;">知识库</h1>
+                <button class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 hover:translate-y-[-1px]" style="background:var(--color-primary);color:var(--color-bg-elevated);font-size:var(--font-size-base);">
+                    <i data-lucide="plus" class="w-[16px] h-[16px]"></i>
+                    创建知识库
+                </button>
+            </div>
+
+            <!-- Search bar -->
+            <div class="relative mb-6">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-[16px] h-[16px]" style="color:var(--color-text-placeholder);"></i>
+                <input type="text" placeholder="搜索知识库..." class="w-full h-10 pl-10 pr-4 rounded-lg border text-sm outline-none transition-colors duration-150 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-lighter)]" style="background:var(--color-bg-elevated);border-color:var(--color-border);color:var(--color-text-primary);font-family:var(--font-family);font-size:var(--font-size-base);">
+            </div>
+
+            <!-- Card grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+                <!-- Card 1 -->
+                <div class="rounded-xl border overflow-hidden transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg cursor-pointer group" style="background:var(--color-bg-elevated);border-color:var(--color-border);box-shadow:var(--shadow-sm);">
+                    <div class="h-1" style="background:var(--color-primary);"></div>
+                    <div class="p-5">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-primary-lighter);">
+                                <i data-lucide="file-text" class="w-[20px] h-[20px]" style="color:var(--color-primary);"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-medium text-[15px] truncate" style="color:var(--color-text-primary);font-weight:var(--font-weight-medium);">第三阶段测试</h3>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-[13px] mb-4" style="color:var(--color-text-tertiary);">
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="file" class="w-[13px] h-[13px]"></i>
+                                0 文档
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="message-circle" class="w-[13px] h-[13px]"></i>
+                                0 问答
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="calendar" class="w-[13px] h-[13px]"></i>
+                                2026/7/11
+                            </span>
+                        </div>
+                        <div class="border-t pt-3 mb-3" style="border-color:var(--color-border-light);"></div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-primary);font-weight:500;">进入</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">文档管理</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">知识图谱</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-danger)] px-1.5 py-0.5 rounded" style="color:var(--color-danger);">删除</a>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <a href="#" class="inline-flex items-center gap-1 text-[12px] transition-colors duration-150 hover:text-[var(--color-primary)]" style="color:var(--color-text-tertiary);">
+                                <i data-lucide="tags" class="w-[12px] h-[12px]"></i>
+                                标签管理
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="rounded-xl border overflow-hidden transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg cursor-pointer group" style="background:var(--color-bg-elevated);border-color:var(--color-border);box-shadow:var(--shadow-sm);">
+                    <div class="h-1" style="background:var(--color-primary);"></div>
+                    <div class="p-5">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-primary-lighter);">
+                                <i data-lucide="file-text" class="w-[20px] h-[20px]" style="color:var(--color-primary);"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-medium text-[15px] truncate" style="color:var(--color-text-primary);font-weight:var(--font-weight-medium);">第二阶段测试知识库v2.0</h3>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-[13px] mb-4" style="color:var(--color-text-tertiary);">
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="file" class="w-[13px] h-[13px]"></i>
+                                8 文档
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="message-circle" class="w-[13px] h-[13px]"></i>
+                                0 问答
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="calendar" class="w-[13px] h-[13px]"></i>
+                                2026/6/11
+                            </span>
+                        </div>
+                        <div class="border-t pt-3 mb-3" style="border-color:var(--color-border-light);"></div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-primary);font-weight:500;">进入</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">文档管理</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">知识图谱</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-danger)] px-1.5 py-0.5 rounded" style="color:var(--color-danger);">删除</a>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <a href="#" class="inline-flex items-center gap-1 text-[12px] transition-colors duration-150 hover:text-[var(--color-primary)]" style="color:var(--color-text-tertiary);">
+                                <i data-lucide="tags" class="w-[12px] h-[12px]"></i>
+                                标签管理
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="rounded-xl border overflow-hidden transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg cursor-pointer group" style="background:var(--color-bg-elevated);border-color:var(--color-border);box-shadow:var(--shadow-sm);">
+                    <div class="h-1" style="background:var(--color-primary);"></div>
+                    <div class="p-5">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-primary-lighter);">
+                                <i data-lucide="file-text" class="w-[20px] h-[20px]" style="color:var(--color-primary);"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-medium text-[15px] truncate" style="color:var(--color-text-primary);font-weight:var(--font-weight-medium);">第二阶段测试知识库</h3>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-[13px] mb-4" style="color:var(--color-text-tertiary);">
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="file" class="w-[13px] h-[13px]"></i>
+                                8 文档
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="message-circle" class="w-[13px] h-[13px]"></i>
+                                0 问答
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="calendar" class="w-[13px] h-[13px]"></i>
+                                2026/7/9
+                            </span>
+                        </div>
+                        <div class="border-t pt-3 mb-3" style="border-color:var(--color-border-light);"></div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-primary);font-weight:500;">进入</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">文档管理</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">知识图谱</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-danger)] px-1.5 py-0.5 rounded" style="color:var(--color-danger);">删除</a>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <a href="#" class="inline-flex items-center gap-1 text-[12px] transition-colors duration-150 hover:text-[var(--color-primary)]" style="color:var(--color-text-tertiary);">
+                                <i data-lucide="tags" class="w-[12px] h-[12px]"></i>
+                                标签管理
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="rounded-xl border overflow-hidden transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg cursor-pointer group" style="background:var(--color-bg-elevated);border-color:var(--color-border);box-shadow:var(--shadow-sm);">
+                    <div class="h-1" style="background:var(--color-primary);"></div>
+                    <div class="p-5">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-primary-lighter);">
+                                <i data-lucide="file-text" class="w-[20px] h-[20px]" style="color:var(--color-primary);"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-medium text-[15px] truncate" style="color:var(--color-text-primary);font-weight:var(--font-weight-medium);">测试</h3>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-[13px] mb-4" style="color:var(--color-text-tertiary);">
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="file" class="w-[13px] h-[13px]"></i>
+                                2 文档
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="message-circle" class="w-[13px] h-[13px]"></i>
+                                0 问答
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="calendar" class="w-[13px] h-[13px]"></i>
+                                2026/7/9
+                            </span>
+                        </div>
+                        <div class="border-t pt-3 mb-3" style="border-color:var(--color-border-light);"></div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-primary);font-weight:500;">进入</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">文档管理</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">知识图谱</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-danger)] px-1.5 py-0.5 rounded" style="color:var(--color-danger);">删除</a>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <a href="#" class="inline-flex items-center gap-1 text-[12px] transition-colors duration-150 hover:text-[var(--color-primary)]" style="color:var(--color-text-tertiary);">
+                                <i data-lucide="tags" class="w-[12px] h-[12px]"></i>
+                                标签管理
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="rounded-xl border overflow-hidden transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg cursor-pointer group" style="background:var(--color-bg-elevated);border-color:var(--color-border);box-shadow:var(--shadow-sm);">
+                    <div class="h-1" style="background:var(--color-primary);"></div>
+                    <div class="p-5">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-primary-lighter);">
+                                <i data-lucide="file-text" class="w-[20px] h-[20px]" style="color:var(--color-primary);"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-medium text-[15px] truncate" style="color:var(--color-text-primary);font-weight:var(--font-weight-medium);">AI学习笔记</h3>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-[13px] mb-4" style="color:var(--color-text-tertiary);">
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="file" class="w-[13px] h-[13px]"></i>
+                                8 文档
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="message-circle" class="w-[13px] h-[13px]"></i>
+                                0 问答
+                            </span>
+                            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <i data-lucide="calendar" class="w-[13px] h-[13px]"></i>
+                                2026/6/27
+                            </span>
+                        </div>
+                        <div class="border-t pt-3 mb-3" style="border-color:var(--color-border-light);"></div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-primary);font-weight:500;">进入</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">文档管理</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-primary)] px-1.5 py-0.5 rounded" style="color:var(--color-text-secondary);">知识图谱</a>
+                                <span class="text-[13px]" style="color:var(--color-border);">|</span>
+                                <a href="#" class="text-[13px] transition-colors duration-150 hover:text-[var(--color-danger)] px-1.5 py-0.5 rounded" style="color:var(--color-danger);">删除</a>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <a href="#" class="inline-flex items-center gap-1 text-[12px] transition-colors duration-150 hover:text-[var(--color-primary)]" style="color:var(--color-text-tertiary);">
+                                <i data-lucide="tags" class="w-[12px] h-[12px]"></i>
+                                标签管理
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>lucide.createIcons();</script>
+
+    <!-- Mobile sidebar toggle -->
+    <style>
+        @media (max-width: 1023px) {
+            .sidebar-open { transform: translateX(0) !important; }
+        }
+    </style>
+    <script>
+        (function() {
+            var toggle = document.getElementById('menu-toggle');
+            var sidebar = document.querySelector('aside');
+            var overlay = document.getElementById('sidebar-overlay');
+            if (toggle && sidebar && overlay) {
+                toggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('sidebar-open');
+                    overlay.classList.toggle('hidden');
+                });
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('sidebar-open');
+                    overlay.classList.add('hidden');
+                });
+            }
+        })();
+    </script>
+
+</body>
+</html>

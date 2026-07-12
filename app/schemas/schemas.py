@@ -1,9 +1,18 @@
 """Pydantic Schema — 请求/响应数据模型"""
 
+import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+# BUG-050: 常见弱密码黑名单
+_WEAK_PASSWORDS = {
+    "123456", "12345678", "123456789", "password", "Password",
+    "admin123", "Admin123", "qwerty", "abc123", "111111",
+    "123123", "000000", "iloveyou", "welcome", "monkey",
+}
 
 
 # ==================== 认证 ====================
@@ -11,7 +20,20 @@ from pydantic import BaseModel, EmailStr, Field
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=2, max_length=64)
     email: Optional[EmailStr] = None
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if v.lower() in _WEAK_PASSWORDS:
+            raise ValueError("密码过于常见，请使用更复杂的密码")
+        if not re.search(r'[A-Z]', v):
+            raise ValueError("密码必须包含至少一个大写字母")
+        if not re.search(r'[a-z]', v):
+            raise ValueError("密码必须包含至少一个小写字母")
+        if not re.search(r'[0-9]', v):
+            raise ValueError("密码必须包含至少一个数字")
+        return v
 
 
 class LoginRequest(BaseModel):
@@ -61,6 +83,7 @@ class KBResponse(BaseModel):
     description: str
     owner_id: str
     chunk_count: int
+    qa_count: int = 0  # BUG-080: 问答计数
     doc_count: int = 0  # 从 relations 补充
     created_at: datetime
     updated_at: datetime

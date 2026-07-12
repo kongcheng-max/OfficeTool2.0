@@ -29,6 +29,7 @@ async def _enrich_kb(kb: KnowledgeBase, db: AsyncSession) -> dict:
         description=kb.description,
         owner_id=kb.owner_id,
         chunk_count=kb.chunk_count,
+        qa_count=kb.qa_count,  # BUG-080: 问答计数
         doc_count=doc_count,
         created_at=kb.created_at,
         updated_at=kb.updated_at,
@@ -74,6 +75,35 @@ async def list_kbs(
         items.append(await _enrich_kb(kb, db))
 
     return APIResponse.success(items)
+
+
+@router.patch("/{kb_id}", response_model=APIResponse[KBResponse])
+async def update_kb(
+    kb_id: str,
+    req: KBUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新知识库名称/描述"""
+    result = await db.execute(
+        select(KnowledgeBase).where(
+            KnowledgeBase.id == kb_id,
+            KnowledgeBase.owner_id == current_user.id,
+        )
+    )
+    kb = result.scalar_one_or_none()
+    if not kb:
+        raise NotFoundError("知识库")
+
+    if req.name is not None:
+        kb.name = req.name
+    if req.description is not None:
+        kb.description = req.description
+
+    await db.flush()
+    await db.refresh(kb)
+    data = await _enrich_kb(kb, db)
+    return APIResponse.success(data, message="知识库已更新")
 
 
 @router.get("/{kb_id}", response_model=APIResponse[KBResponse])

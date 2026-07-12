@@ -55,8 +55,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await getMe();
       localStorage.setItem('user', JSON.stringify(user));
       set({ user });
-    } catch {
-      // token expired — stay on current page, let interceptor handle redirect on next API call
+    } catch (e) {
+      // BUG-048: Token 过期/无效时主动清理，保持 UI 与认证状态一致
+      console.warn('[authStore] Token 无效或已过期，正在登出:', e);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      set({ user: null, token: null });
     }
   },
 

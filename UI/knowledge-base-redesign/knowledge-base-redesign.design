@@ -1,0 +1,30 @@
+{
+  "data": [
+    {
+      "id": "page-knowledge-base",
+      "title": "知识库管理",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752260600000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/knowledge-base.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "知识库管理系统 - 重新设计",
+    "windowSize": {
+      "width": 800,
+      "height": 600
+    },
+    "showEdge": false
+  }
+}

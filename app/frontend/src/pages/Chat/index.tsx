@@ -6,7 +6,6 @@ import {
   Spin,
   Empty,
   Space,
-  List,
   Popconfirm,
   App,
 } from 'antd';
@@ -18,11 +17,12 @@ import {
 } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import ChatMessage from '../../components/ChatMessage';
+import { Stagger, StaggerItem } from '../../components/motion/FadeIn';
 import { chatStream } from '../../api/qa';
 import type { SourceInfo } from '../../api/qa';
 import { useKBStore } from '../../stores/kbStore';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
 // ── Types ──────────────────────────────────────────────────
@@ -257,15 +257,15 @@ const Chat: React.FC = () => {
   // ── Render ───────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', gap: 16, height: `calc(100vh - 64px - 48px - 48px)` }}>
+    <div style={{ display: 'flex', gap: 16, height: '100%', padding: 20, minHeight: 0 }}>
       {/* ── Conversation Sidebar ── */}
       <div
         style={{
           width: SIDEBAR_WIDTH,
           flexShrink: 0,
-          background: '#fff',
-          borderRadius: 8,
-          border: '1px solid #f0f0f0',
+          background: 'var(--paper)',
+          borderRadius: 14,
+          border: '1px solid var(--line)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -274,82 +274,66 @@ const Chat: React.FC = () => {
         {/* Sidebar Header */}
         <div
           style={{
-            padding: '12px 16px',
-            borderBottom: '1px solid #f0f0f0',
+            padding: '14px 16px',
+            borderBottom: '1px solid var(--divider)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
-          <Text strong>对话列表</Text>
-          <Button
-            type="primary"
-            size="small"
-            icon={<PlusOutlined />}
-            onClick={handleNewChat}
-          >
-            新对话
+          <span style={{ fontFamily: 'var(--f-display)', fontWeight: 600, fontSize: 15 }}>会话</span>
+          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleNewChat}>
+            新会话
           </Button>
         </div>
 
         {/* Conversation List */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
           {conversations.length === 0 ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="暂无对话"
+              description="暂无会话"
               style={{ marginTop: 40 }}
             />
           ) : (
-            <List
-              dataSource={conversations}
-              renderItem={(conv) => (
+            <Stagger>
+              {conversations.map((conv) => {
+              const active = activeConvId === conv.id;
+              return (
+                <StaggerItem key={conv.id}>
                 <div
-                  key={conv.id}
                   onClick={() => {
                     abortRef.current?.abort();
                     setActiveConvId(conv.id);
                     setLoading(false);
                   }}
                   style={{
-                    padding: '12px 16px',
+                    padding: '10px 12px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid #fafafa',
-                    background:
-                      activeConvId === conv.id ? '#e6f4ff' : 'transparent',
-                    borderLeft:
-                      activeConvId === conv.id
-                        ? '3px solid #1677FF'
-                        : '3px solid transparent',
-                    transition: 'all 0.2s',
+                    borderRadius: 10,
+                    marginBottom: 2,
+                    background: active ? 'var(--active)' : 'transparent',
+                    transition: 'background .14s ease',
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Space size={4} style={{ flex: 1, minWidth: 0 }}>
-                      <MessageOutlined
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                      <MessageOutlined style={{ color: active ? 'var(--brand)' : 'var(--ink-3)', fontSize: 12 }} />
+                      <span
                         style={{
-                          color: activeConvId === conv.id ? '#1677FF' : '#8c8c8c',
-                          fontSize: 12,
-                        }}
-                      />
-                      <Text
-                        ellipsis
-                        style={{
-                          fontSize: 13,
-                          color: activeConvId === conv.id ? '#1677FF' : '#262626',
+                          fontSize: 13.5,
+                          fontWeight: active ? 600 : 500,
+                          color: active ? 'var(--brand)' : 'var(--ink)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        {conv.title || '新对话'}
-                      </Text>
-                    </Space>
+                        {conv.title || '新会话'}
+                      </span>
+                    </div>
                     <Popconfirm
-                      title="删除此对话？"
+                      title="删除此会话？"
                       onConfirm={(e) => {
                         e?.stopPropagation();
                         handleDeleteConv(conv.id);
@@ -367,87 +351,57 @@ const Chat: React.FC = () => {
                       />
                     </Popconfirm>
                   </div>
-                  <Paragraph
-                    type="secondary"
-                    style={{
-                      fontSize: 11,
-                      margin: '4px 0 0 0',
-                      color: '#8c8c8c',
-                    }}
-                  >
-                    {conv.messages.length} 条消息 ·{' '}
-                    {new Date(conv.createdAt).toLocaleDateString('zh-CN')}
-                  </Paragraph>
+                  <div style={{ fontSize: 11.5, margin: '4px 0 0 18px', color: 'var(--ink-3)' }}>
+                    {conv.messages.length} 条 · {new Date(conv.createdAt).toLocaleDateString('zh-CN')}
+                  </div>
                 </div>
-              )}
-            />
+                </StaggerItem>
+              );
+            })}
+            </Stagger>
           )}
         </div>
       </div>
 
       {/* ── Main Chat Area ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-        >
-          <Title level={4} style={{ margin: 0 }} ellipsis>
-            智能问答 — {currentKB?.name || `知识库 #${kbId}`}
-          </Title>
-          <Button icon={<PlusOutlined />} onClick={handleNewChat} disabled={loading}>
-            新对话
-          </Button>
-        </div>
-
         {/* Messages Area */}
         <div
           style={{
             flex: 1,
             overflowY: 'auto',
-            background: '#fff',
-            borderRadius: 8,
-            border: '1px solid #f0f0f0',
-            marginBottom: 16,
-            padding: 24,
+            background: 'var(--paper)',
+            borderRadius: 14,
+            border: '1px solid var(--line)',
+            marginBottom: 14,
+            padding: 26,
+            minHeight: 0,
           }}
         >
           {!activeConvId || messages.length === 0 ? (
-            <div style={{ textAlign: 'center', paddingTop: 80 }}>
-              <Empty
-                description={
-                  activeConvId
-                    ? '开始追问吧'
-                    : '选择一个对话或创建新对话来开始提问'
-                }
-              >
-                <div style={{ marginTop: 16 }}>
-                  <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                    试试这些问题：
-                  </Text>
-                  <Space direction="vertical" size={8}>
-                    {suggestions.map((q, i) => (
-                      <Button
-                        key={i}
-                        type="dashed"
-                        onClick={() => {
-                          // auto-create conversation if needed
-                          setInput(q);
-                          if (!activeConvId) {
-                            handleNewChat();
-                          }
-                        }}
-                      >
-                        {q}
-                      </Button>
-                    ))}
-                  </Space>
-                </div>
-              </Empty>
+            <div style={{ textAlign: 'center', paddingTop: 72, maxWidth: 460, margin: '0 auto' }}>
+              <span className="ot-mark" style={{ width: 56, height: 56, borderRadius: 16, display: 'inline-block', marginBottom: 18 }} />
+              <div style={{ fontFamily: 'var(--f-display)', fontWeight: 600, fontSize: 20, color: 'var(--ink)' }}>
+                向「{currentKB?.name || '知识库'}」提问
+              </div>
+              <Text type="secondary" style={{ display: 'block', margin: '8px 0 20px' }}>
+                每个回答都会连回它引用的文档来源
+              </Text>
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                {suggestions.map((q, i) => (
+                  <Button
+                    key={i}
+                    block
+                    onClick={() => {
+                      setInput(q);
+                      if (!activeConvId) handleNewChat();
+                    }}
+                    style={{ textAlign: 'left', height: 'auto', padding: '10px 14px' }}
+                  >
+                    {q}
+                  </Button>
+                ))}
+              </Space>
             </div>
           ) : (
             <>
@@ -462,9 +416,9 @@ const Chat: React.FC = () => {
                 />
               ))}
               {loading && messages[messages.length - 1]?.role === 'ai' && (
-                <div style={{ padding: '8px 16px' }}>
+                <div style={{ paddingLeft: 46 }}>
                   <Text type="secondary">
-                    <Spin size="small" /> AI 正在生成回答…
+                    <Spin size="small" /> 正在生成回答…
                   </Text>
                 </div>
               )}
@@ -477,22 +431,24 @@ const Chat: React.FC = () => {
         <div
           style={{
             display: 'flex',
-            gap: 12,
+            gap: 10,
             alignItems: 'flex-end',
-            padding: '12px 16px',
-            background: '#fff',
-            borderRadius: 8,
-            border: '1px solid #f0f0f0',
+            padding: '10px 10px 10px 16px',
+            background: 'var(--paper)',
+            borderRadius: 14,
+            border: '1px solid var(--line)',
+            boxShadow: 'var(--sh-sm)',
           }}
         >
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入你的问题… (Enter 发送，Shift+Enter 换行)"
+            placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"
             autoSize={{ minRows: 1, maxRows: 4 }}
             disabled={loading}
-            style={{ flex: 1, border: 'none' }}
+            variant="borderless"
+            style={{ flex: 1 }}
           />
           <Button
             type="primary"

@@ -23,19 +23,12 @@ import {
   type EntityNetwork,
 } from '../../api/graph';
 import { useKBStore } from '../../stores/kbStore';
+import { useTheme } from '../../theme/ThemeProvider';
+import { entityColors } from '../../theme/tokens';
+import { Stagger, StaggerItem } from '../../components/motion/FadeIn';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
-
-// Entity type → color mapping
-const ENTITY_COLORS: Record<string, string> = {
-  PERSON: '#FF6B6B',
-  ORG: '#4ECDC4',
-  DATE: '#FFD93D',
-  MONEY: '#6BCB77',
-  LOCATION: '#4D96FF',
-  TERM: '#9B59B6',
-};
 
 const ENTITY_LABELS: Record<string, string> = {
   PERSON: '人物',
@@ -51,7 +44,11 @@ const GraphPage: React.FC = () => {
   const kbId = id || '';
   const { message } = App.useApp();
   const { list } = useKBStore();
+  const { mode } = useTheme();
   const currentKB = list.find((kb) => kb.id === kbId);
+
+  // 校准后的实体色（随主题变化，G6 需真实 hex）
+  const ENTITY_COLORS = entityColors[mode];
 
   const [entities, setEntities] = useState<EntityNode[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -105,6 +102,12 @@ const GraphPage: React.FC = () => {
     const width = containerRef.current.clientWidth;
     const height = containerRef.current.clientHeight || 500;
 
+    // 主题相关色（G6 需真实值，不能用 CSS 变量）
+    const labelFill = mode === 'dark' ? 'rgba(255,255,255,0.85)' : '#1F2329';
+    const edgeStroke = mode === 'dark' ? '#3A3D42' : '#DEE0E3';
+    const edgeLabel = mode === 'dark' ? 'rgba(255,255,255,0.45)' : '#8F959E';
+    const brand = mode === 'dark' ? '#4E83FD' : '#3370FF';
+
     const g6 = new G6Graph({
       container: containerRef.current,
       width,
@@ -127,9 +130,9 @@ const GraphPage: React.FC = () => {
         style: (datum: Record<string, unknown>) => {
           const type = (datum.type as string) || 'TERM';
           return {
-            fill: ENTITY_COLORS[type] || '#9B59B6',
+            fill: ENTITY_COLORS[type] || ENTITY_COLORS.TERM,
             labelText: datum.label as string,
-            labelFill: '#262626',
+            labelFill,
             labelFontSize: 12,
             labelPlacement: 'bottom',
             labelOffsetY: 6,
@@ -144,16 +147,16 @@ const GraphPage: React.FC = () => {
       },
       edge: {
         style: {
-          stroke: '#d9d9d9',
+          stroke: edgeStroke,
           endArrow: true,
           labelText: (datum: Record<string, unknown>) => datum.label as string || '',
           labelFontSize: 10,
-          labelFill: '#8c8c8c',
+          labelFill: edgeLabel,
         },
         state: {
           active: {
-            stroke: '#1677FF',
-            labelFill: '#1677FF',
+            stroke: brand,
+            labelFill: brand,
           },
         },
       },
@@ -170,7 +173,8 @@ const GraphPage: React.FC = () => {
     });
 
     graphRef.current = g6;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // ── Entity click ───────────────────────────────────────
   const handleEntityClick = useCallback(
@@ -193,6 +197,21 @@ const GraphPage: React.FC = () => {
     [kbId, message, renderGraph],
   );
 
+  // ── BUG-053: 窗口缩放时自动调整图谱画布 ──
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      if (graphRef.current && container) {
+        const w = container.clientWidth;
+        const h = container.clientHeight || 500;
+        graphRef.current.setSize(w, h);
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   // ── Cleanup ────────────────────────────────────────────
   useEffect(() => {
     return () => {
@@ -201,24 +220,24 @@ const GraphPage: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ height: `calc(100vh - 64px - 48px - 48px)`, display: 'flex', gap: 16 }}>
+    <div style={{ height: '100%', display: 'flex', gap: 16, padding: 16, minHeight: 0 }}>
       {/* ── Left: Entity List ── */}
       <div
         style={{
           width: 280,
           flexShrink: 0,
-          background: '#fff',
-          borderRadius: 8,
-          border: '1px solid #f0f0f0',
+          background: 'var(--paper)',
+          borderRadius: 14,
+          border: '1px solid var(--line)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
-          <Title level={5} style={{ margin: '0 0 8px 0' }}>
-            知识图谱 — {currentKB?.name || `知识库 #${kbId}`}
-          </Title>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--divider)' }}>
+          <div style={{ fontFamily: 'var(--f-display)', fontWeight: 600, fontSize: 15, margin: '0 0 10px 0' }}>
+            知识图谱
+          </div>
           <Search
             placeholder="搜索实体…"
             allowClear
@@ -237,23 +256,21 @@ const GraphPage: React.FC = () => {
               description="暂无实体数据"
             />
           ) : (
-            <List
-              size="small"
-              dataSource={entities}
-              renderItem={(ent) => (
+            <Stagger>
+              {entities.map((ent) => (
+                <StaggerItem key={ent.name}>
                 <div
                   onClick={() => handleEntityClick(ent.name)}
                   style={{
                     padding: '8px 12px',
                     cursor: 'pointer',
-                    borderRadius: 6,
-                    marginBottom: 4,
-                    border: '1px solid #fafafa',
+                    borderRadius: 9,
+                    marginBottom: 3,
                     background:
                       selectedEntity?.entity?.name === ent.name
-                        ? '#e6f4ff'
+                        ? 'var(--active)'
                         : 'transparent',
-                    transition: 'all 0.2s',
+                    transition: 'background 0.14s',
                   }}
                 >
                   <Space>
@@ -262,7 +279,7 @@ const GraphPage: React.FC = () => {
                         width: 8,
                         height: 8,
                         borderRadius: '50%',
-                        background: ENTITY_COLORS[ent.type] || '#999',
+                        background: ENTITY_COLORS[ent.type] || 'var(--ink-3)',
                         display: 'inline-block',
                       }}
                     />
@@ -277,14 +294,15 @@ const GraphPage: React.FC = () => {
                     </Tag>
                   </Space>
                 </div>
-              )}
-            />
+                </StaggerItem>
+              ))}
+            </Stagger>
           )}
         </div>
 
         {/* Legend */}
-        <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0' }}>
-          <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--divider)' }}>
+          <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
             图例：
           </Text>
           <Space wrap size={[4, 4]}>
@@ -306,10 +324,11 @@ const GraphPage: React.FC = () => {
         <div
           ref={containerRef}
           style={{
+            position: 'relative',
             flex: 1,
-            background: '#fff',
-            borderRadius: 8,
-            border: '1px solid #f0f0f0',
+            background: 'var(--paper)',
+            borderRadius: 14,
+            border: '1px solid var(--line)',
             overflow: 'hidden',
             minHeight: 400,
           }}
@@ -325,7 +344,7 @@ const GraphPage: React.FC = () => {
                 pointerEvents: 'none',
               }}
             >
-              <AimOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 12 }} />
+              <AimOutlined style={{ fontSize: 48, color: 'var(--ink-3)', marginBottom: 12 }} />
               <br />
               <Text type="secondary">点击左侧实体查看关系网络</Text>
             </div>
@@ -350,9 +369,9 @@ const GraphPage: React.FC = () => {
           style={{
             width: 320,
             flexShrink: 0,
-            background: '#fff',
-            borderRadius: 8,
-            border: '1px solid #f0f0f0',
+            background: 'var(--paper)',
+            borderRadius: 14,
+            border: '1px solid var(--line)',
             overflowY: 'auto',
             padding: 16,
           }}

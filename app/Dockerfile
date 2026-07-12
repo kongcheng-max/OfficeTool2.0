@@ -7,6 +7,7 @@ RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.li
     sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list 2>/dev/null; \
     apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libjpeg-dev zlib1g-dev libpng-dev \
     tesseract-ocr \
     tesseract-ocr-chi-sim \
     tesseract-ocr-chi-tra \
@@ -46,6 +47,7 @@ RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ 2>/d
     sentence-transformers>=2.7.0 \
     pyyaml>=6.0 \
     pytesseract>=0.3.0 \
+    paddleocr>=2.7.0 \
     Pillow>=10.0.0
 
 # 应用代码

@@ -29,20 +29,21 @@ const Admin: React.FC = () => {
   const fetchUsers = useCallback(async () => {
     setUserLoading(true);
     try {
-      const res = await client.get('/admin/users', { params: { page: userPage, page_size: 20 } });
+      // client 响应拦截器已解包为 {items,total,...}，此处按运行时形状读取
+      const res: any = await client.get('/admin/users', { params: { page: userPage, page_size: 20 } });
       setUsers(res.items || []);
       setUserTotal(res.total || 0);
-    } catch { /* handled */ }
+    } catch { /* axios interceptor handles error toast */ }
     setUserLoading(false);
   }, [userPage]);
 
   const fetchLogs = useCallback(async () => {
     setLogLoading(true);
     try {
-      const res = await client.get('/admin/audit-logs', { params: { page: logPage, page_size: 50 } });
+      const res: any = await client.get('/admin/audit-logs', { params: { page: logPage, page_size: 50 } });
       setLogs(res.items || []);
       setLogTotal(res.total || 0);
-    } catch { /* handled */ }
+    } catch { /* axios interceptor handles error toast */ }
     setLogLoading(false);
   }, [logPage]);
 
@@ -129,8 +130,8 @@ const Admin: React.FC = () => {
   ];
 
   return (
-    <div>
-      <Title level={4} style={{ marginBottom: 24 }}>管理后台</Title>
+    <div style={{ padding: 24 }}>
+      <Title level={3} style={{ marginBottom: 24, fontFamily: 'var(--f-display)' }}>管理后台</Title>
 
       <Tabs
         items={[

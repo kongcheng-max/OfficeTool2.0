@@ -20,6 +20,7 @@ import {
   PlusOutlined,
   TagOutlined,
   DeleteOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useKBStore } from '../../stores/kbStore';
@@ -33,6 +34,7 @@ import {
   type TagStat,
 } from '../../api/tag';
 import KnowledgeBaseCard from '../../components/KnowledgeBaseCard';
+import { FadeIn } from '../../components/motion/FadeIn';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -43,7 +45,17 @@ const KnowledgeBase: React.FC = () => {
   const { message } = App.useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState('');
   const [form] = Form.useForm();
+
+  const filteredList = list.filter((kb) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      kb.name.toLowerCase().includes(q) ||
+      (kb.description || '').toLowerCase().includes(q)
+    );
+  });
 
   // ── Tag management state ─────────────────────────────
   const [tagModalKbId, setTagModalKbId] = useState<string | null>(null);
@@ -132,56 +144,64 @@ const KnowledgeBase: React.FC = () => {
   };
 
   return (
-    <div>
+    <div style={{ padding: 24 }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 24,
+          marginBottom: 20,
         }}
       >
-        <Title level={4} style={{ margin: 0 }}>
-          我的知识库
+        <Title level={3} style={{ margin: 0, fontFamily: 'var(--f-display)' }}>
+          知识库
         </Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
           创建知识库
         </Button>
       </div>
 
+      {/* 搜索 */}
+      <Input
+        allowClear
+        size="large"
+        prefix={<SearchOutlined style={{ color: 'var(--ink-3)' }} />}
+        placeholder="搜索知识库…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ marginBottom: 24, maxWidth: 480 }}
+      />
+
       {loading ? (
         <Spin style={{ display: 'block', padding: 80 }} />
       ) : list.length === 0 ? (
-        <Empty description="暂无知识库">
+        <Empty description="还没有知识库">
           <Button type="primary" onClick={() => setModalOpen(true)}>
             创建第一个知识库
           </Button>
         </Empty>
+      ) : filteredList.length === 0 ? (
+        <Empty description={`没有匹配「${search}」的知识库`} />
       ) : (
-        <Row gutter={[16, 16]}>
-          {list.map((kb: KnowledgeBaseItem) => (
-            <Col xs={24} sm={12} lg={8} key={kb.id}>
-              <KnowledgeBaseCard
-                id={kb.id}
-                name={kb.name}
-                description={kb.description}
-                documentCount={kb.doc_count || kb.document_count || 0}
-                qaCount={kb.qa_count || 0}
-                chunkCount={kb.chunk_count || 0}
-                createdAt={kb.created_at}
-                onEnter={(id) => navigate(`/kb/${id}/chat`)}
-                onManage={(id) => navigate(`/kb/${id}/documents`)}
-                onGraph={(id) => navigate(`/kb/${id}/graph`)}
-              />
-              <div style={{ marginTop: 8, textAlign: 'center' }}>
-                <Button
-                  size="small"
-                  icon={<TagOutlined />}
-                  onClick={() => openTagManager(kb.id, kb.name)}
-                >
-                  标签管理
-                </Button>
-              </div>
+        <Row gutter={[20, 20]}>
+          {filteredList.map((kb: KnowledgeBaseItem, i: number) => (
+            <Col xs={24} md={12} xl={8} key={kb.id}>
+              <FadeIn delay={Math.min(i * 0.06, 0.4)} style={{ height: '100%' }}>
+                <KnowledgeBaseCard
+                  id={kb.id}
+                  name={kb.name}
+                  description={kb.description}
+                  documentCount={kb.doc_count || kb.document_count || 0}
+                  qaCount={kb.qa_count || 0}
+                  chunkCount={kb.chunk_count || 0}
+                  createdAt={kb.created_at}
+                  onEnter={(id) => navigate(`/kb/${id}/chat`)}
+                  onManage={(id) => navigate(`/kb/${id}/documents`)}
+                  onGraph={(id) => navigate(`/kb/${id}/graph`)}
+                  onDelete={(id) => handleDelete(id)}
+                  onTags={(id) => openTagManager(id, kb.name)}
+                />
+              </FadeIn>
             </Col>
           ))}
         </Row>

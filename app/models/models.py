@@ -49,6 +49,7 @@ class KnowledgeBase(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     owner_id: Mapped[str] = mapped_column(String(32), ForeignKey("users.id"), nullable=False, index=True)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    qa_count: Mapped[int] = mapped_column(Integer, default=0)  # BUG-080: 问答计数
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow

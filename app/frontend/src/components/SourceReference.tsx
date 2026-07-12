@@ -1,85 +1,126 @@
 import React from 'react';
-import { Card, Tag, Space, Typography } from 'antd';
-import { FileTextOutlined } from '@ant-design/icons';
+import { useTheme } from '../theme/ThemeProvider';
+import { sourceColors } from '../theme/tokens';
 import type { SourceInfo } from '../api/qa';
-
-const { Text, Paragraph } = Typography;
-
-const SOURCE_COLORS: Record<string, string> = {
-  vector: '#1677FF',
-  bm25: '#52C41A',
-  kg: '#FAAD14',
-};
 
 interface Props {
   source: SourceInfo;
+  index: number;
 }
 
-const SourceReference: React.FC<Props> = ({ source }) => {
+const SOURCE_LABELS: Record<string, string> = {
+  vector: '向量',
+  bm25: '关键词',
+  kg: '图谱',
+};
+
+/** 证据链节点 —— 一处文档来源，挂在答案下方的时间线上 */
+const SourceReference: React.FC<Props> = ({ source, index }) => {
+  const { mode } = useTheme();
+  const colors = sourceColors[mode];
+
   return (
-    <Card
-      size="small"
-      style={{
-        marginBottom: 8,
-        background: '#fafafa',
-        border: '1px solid #f0f0f0',
-      }}
-      bodyStyle={{ padding: '10px 14px' }}
-    >
-      {/* Header: doc name + page + score + source tags */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 6,
-          flexWrap: 'wrap',
-        }}
-      >
-        <FileTextOutlined style={{ color: '#1677FF', fontSize: 14 }} />
-        <Text strong style={{ fontSize: 13 }}>
-          {source.document_name || '未知文档'}
-        </Text>
-        {source.page != null && (
-          <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>
-            P{source.page}
-          </Tag>
+    <div className="ot-rise" style={{ ...cardStyle, animationDelay: `${0.25 + index * 0.12}s` }}>
+      {/* 时间线节点圆点 */}
+      <span style={nodeDot} />
+
+      {/* 头部：文档名 + 相关度 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <span style={docIco}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" />
+          </svg>
+        </span>
+        <span style={docName}>{source.document_name || '未知文档'}</span>
+        {source.score != null && (
+          <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, fontWeight: 500, color: 'var(--success)' }}>
+            相关度 {(source.score * 100).toFixed(0)}%
+          </span>
         )}
-        {source.chunk_index != null && (
-          <Tag color="default" style={{ fontSize: 11, margin: 0 }}>
-            Chunk #{source.chunk_index}
-          </Tag>
-        )}
-        <Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
-          相关度: {(source.score * 100).toFixed(0)}%
-        </Text>
       </div>
 
-      {/* Source pathway tags */}
-      {source.sources && source.sources.length > 0 && (
-        <div style={{ marginBottom: 6 }}>
-          {source.sources.map((src) => (
-            <Tag
-              key={src}
-              color={SOURCE_COLORS[src] || 'default'}
-              style={{ fontSize: 10, lineHeight: '16px', marginRight: 4 }}
-            >
-              {src.toUpperCase()}
-            </Tag>
-          ))}
-        </div>
-      )}
+      {/* 元信息标签：页码/块 + 检索路径 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
+        {source.page != null && <span style={{ ...chip, background: 'var(--hover)', color: 'var(--ink-2)', fontFamily: 'var(--f-mono)' }}>p.{source.page}</span>}
+        {source.chunk_index != null && <span style={{ ...chip, background: 'var(--hover)', color: 'var(--ink-2)', fontFamily: 'var(--f-mono)' }}>块 #{source.chunk_index}</span>}
+        {source.sources?.map((src) => {
+          const c = colors[src] || 'var(--ink-2)';
+          return (
+            <span key={src} style={{ ...chip, color: c, background: `color-mix(in srgb, ${c} 15%, transparent)` }}>
+              {SOURCE_LABELS[src] || src.toUpperCase()}
+            </span>
+          );
+        })}
+      </div>
 
-      {/* Chunk text excerpt */}
-      <Paragraph
-        ellipsis={{ rows: 3, expandable: true, symbol: '展开' }}
-        type="secondary"
-        style={{ fontSize: 12, margin: 0, whiteSpace: 'pre-wrap' }}
-      >
-        {source.chunk_text}
-      </Paragraph>
-    </Card>
+      {/* 摘录 */}
+      {source.chunk_text && (
+        <div style={excerpt}>{source.chunk_text}</div>
+      )}
+    </div>
   );
+};
+
+const cardStyle: React.CSSProperties = {
+  position: 'relative',
+  background: 'var(--paper)',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--r-md)',
+  padding: '12px 14px',
+  marginBottom: 10,
+  boxShadow: 'var(--sh-sm)',
+};
+
+const nodeDot: React.CSSProperties = {
+  position: 'absolute',
+  left: -22,
+  top: 16,
+  width: 12,
+  height: 12,
+  borderRadius: '50%',
+  background: 'var(--paper)',
+  border: '2.5px solid var(--brand)',
+  boxShadow: '0 0 0 4px var(--body)',
+};
+
+const docIco: React.CSSProperties = {
+  width: 26,
+  height: 26,
+  borderRadius: 7,
+  background: 'var(--halo)',
+  color: 'var(--brand)',
+  display: 'grid',
+  placeItems: 'center',
+  flex: 'none',
+};
+
+const docName: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  fontSize: 13.5,
+  fontWeight: 600,
+  color: 'var(--ink)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
+const chip: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 500,
+  padding: '2px 8px',
+  borderRadius: 6,
+  letterSpacing: '.02em',
+};
+
+const excerpt: React.CSSProperties = {
+  marginTop: 9,
+  fontSize: 12.5,
+  color: 'var(--ink-2)',
+  lineHeight: 1.6,
+  borderLeft: '2px solid var(--divider)',
+  paddingLeft: 10,
+  whiteSpace: 'pre-wrap',
 };
 
 export default SourceReference;

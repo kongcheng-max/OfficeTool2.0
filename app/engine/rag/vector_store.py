@@ -93,12 +93,14 @@ class VectorStore:
             if existing_type == "HNSW":
                 return  # 已经是 HNSW，无需迁移
 
-            # 迁移：删除旧索引 → 重建为 HNSW
+            # 迁移：释放 → 删除旧索引 → 重建 HNSW
             logger.info(
                 f"Milvus 索引迁移: {existing_type} → HNSW "
                 f"(collection={self.COLLECTION_NAME})"
             )
             try:
+                # BUG-073: loaded collection 必须先 release 才能 drop index
+                coll.release()
                 coll.drop_index()
                 logger.info(f"已删除旧索引 {existing_type}")
             except Exception as e:
@@ -114,6 +116,8 @@ class VectorStore:
             field_name="embedding",
             index_params=index_params,
         )
+        # BUG-073: 重建索引后重新加载 collection
+        coll.load()
         logger.info(f"Milvus HNSW 索引已创建: {self.COLLECTION_NAME}")
 
     def insert(self, records: List[Dict]) -> List[int]:

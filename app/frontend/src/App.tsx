@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, App as AntApp, Spin } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import { Spin } from 'antd';
+import { ThemeProvider } from './theme/ThemeProvider';
 import AppLayout from './components/AppLayout';
 import Login from './pages/Login';
 import { useAuthStore } from './stores/authStore';
@@ -37,38 +37,28 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        token: {
-          colorPrimary: '#1677FF',
-          borderRadius: 6,
-        },
-      }}
-    >
-      <AntApp>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              element={
-                <RequireAuth>
-                  <AppLayout />
-                </RequireAuth>
-              }
-            >
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/kb/manage" element={<KnowledgeBase />} />
-              <Route path="/kb/:id/documents" element={<Documents />} />
-              <Route path="/kb/:id/chat" element={<Chat />} />
-              <Route path="/kb/:id/graph" element={<GraphPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </AntApp>
-    </ConfigProvider>
+    <ThemeProvider>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            element={
+              <RequireAuth>
+                <AppLayout />
+              </RequireAuth>
+            }
+          >
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/kb/manage" element={<KnowledgeBase />} />
+            <Route path="/kb/:id/documents" element={<Documents />} />
+            <Route path="/kb/:id/chat" element={<Chat />} />
+            <Route path="/kb/:id/graph" element={<GraphPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </ThemeProvider>
   );
 };
 

@@ -206,7 +206,7 @@ services:
     restart: unless-stopped
     command: >
       celery -A tasks.celery_app worker
-      --loglevel=info --pool=threads --concurrency=4
+      --loglevel=info --pool=threads --concurrency=8
       -Q default
     depends_on:
       postgres: { condition: service_healthy }

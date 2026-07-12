@@ -2,8 +2,9 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,6 +56,7 @@ async def ask_question(
 async def ask_question_stream(
     kb_id: str,
     req: QARequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -70,6 +72,10 @@ async def ask_question_stream(
 
     async def generate():
         async for chunk_json in qa_stream(question=req.question, kb_id=kb_id):
+            # BUG-046: 客户端断开后停止 LLM 流，避免浪费 API 配额
+            if await request.is_disconnected():
+                logger.info(f"SSE 客户端断开，停止流式输出")
+                break
             yield f"data: {chunk_json}\n\n"
 
     return StreamingResponse(
@@ -128,6 +134,7 @@ async def chat_conversation(
 async def chat_conversation_stream(
     kb_id: str,
     req: ChatRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -147,6 +154,10 @@ async def chat_conversation_stream(
             kb_id=kb_id,
             conversation_id=req.conversation_id,
         ):
+            # BUG-046: 客户端断开后停止 LLM 流
+            if await request.is_disconnected():
+                logger.info(f"SSE 客户端断开，停止多轮对话流式输出")
+                break
             yield f"data: {chunk_json}\n\n"
 
     return StreamingResponse(
@@ -178,3 +189,53 @@ async def clear_chat(
 
     await clear_conversation(conv_id)
     return APIResponse.success(message="对话历史已清除")
+
+
+# BUG-049: 对话列表查询 API（从 Redis 恢复已知的对话 ID）
+@router.get("/api/v1/kb/{kb_id}/conversations", response_model=APIResponse[list])
+async def list_conversations(
+    kb_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取当前用户的对话列表（从 Redis）"""
+    result = await db.execute(
+        select(KnowledgeBase).where(
+            KnowledgeBase.id == kb_id,
+            KnowledgeBase.owner_id == current_user.id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise NotFoundError("知识库")
+
+    # 从 Redis 扫描所有 conv:* 前缀的 key
+    import json as _json
+    from services.qa_service import _get_redis, _get_conversation_history
+
+    r = await _get_redis()
+    items = []
+    if r:
+        try:
+            cursor = 0
+            while True:
+                cursor, keys = await r.scan(cursor, match="conv:*", count=100)
+                for key in keys:
+                    try:
+                        data = await r.get(key)
+                        if data:
+                            conv = _json.loads(data)
+                            conv_id = key.decode("utf-8").replace("conv:", "")
+                            first_msg = conv[0]["content"][:60] if conv else "(空)"
+                            items.append({
+                                "id": conv_id[:20],
+                                "title": first_msg,
+                                "message_count": len(conv),
+                            })
+                    except Exception:
+                        pass
+                if cursor == 0:
+                    break
+        except Exception:
+            pass
+
+    return APIResponse.success(items)

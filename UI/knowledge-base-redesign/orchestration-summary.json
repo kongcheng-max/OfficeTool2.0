@@ -1,0 +1,84 @@
+{
+  "project": {
+    "name": "知识库管理系统 - 重新设计",
+    "path": "e:\\OfficeTool\\UI\\knowledge-base-redesign",
+    "operation": "create",
+    "deviceType": "desktop",
+    "language": "zh-CN",
+    "dashboardMode": false,
+    "replicationMode": null,
+    "sourceUrl": null,
+    "visualSpecExcerpt": null,
+    "styleDefinitionBrief": "企业级知识库管理系统界面，蓝色主色调(#3B7DDD)，干净克制的工具型界面，紧凑但不拥挤的布局节奏",
+    "designRead": "B2B SaaS dashboard / 内部知识管理用户 / calm enterprise trust / medium density / avoid overly playful decorative elements",
+    "designDials": {
+      "layoutVariance": 2,
+      "motionIntensity": 2,
+      "visualDensity": 3
+    },
+    "generationTree": {
+      "root": {
+        "nodeId": "gen-project-shell",
+        "kind": "project-shell",
+        "pageIds": ["page-knowledge-base"],
+        "output": "partials/project-shell.html",
+        "sharedRegions": ["sidebar", "topbar"],
+        "privateRegions": [],
+        "mutableSlots": ["activeNavItem", "pageTitle"],
+        "status": "planned",
+        "children": [
+          {
+            "nodeId": "gen-page-knowledge-base",
+            "kind": "page-leaf",
+            "pageIds": ["page-knowledge-base"],
+            "output": "pages/knowledge-base.html",
+            "sharedRegions": [],
+            "privateRegions": ["main content area with cards grid"],
+            "mutableSlots": ["activeNavItem", "pageTitle"],
+            "status": "planned",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "libraryIdentity": {
+      "name": null,
+      "id": null,
+      "version": null,
+      "scope": null,
+      "path": null,
+      "versionSource": null
+    },
+    "styleConstraints": {
+      "radiusMax": 12,
+      "staticShadowAlphaMax": 0.05
+    }
+  },
+  "pages": [
+    {
+      "nodeId": "page-knowledge-base",
+      "title": "知识库管理",
+      "htmlSrc": "pages/knowledge-base.html",
+      "pageIndex": 1,
+      "pageType": "information-dense",
+      "visualNorthStar": "Left sidebar navigation with clean card grid in main content area, enterprise-grade knowledge management interface",
+      "compositionPattern": null,
+      "continuityAnchors": {
+        "colorSystem": "Blue primary #3B7DDD, light gray #F0F2F5 background, white elevated surfaces",
+        "shapeSystem": "8-12px border radius on cards and containers, clean rectangular layout",
+        "typographySystem": "System sans-serif font stack, clear hierarchy from 24px page title to 13px secondary text",
+        "componentLanguage": "Card-based layout with subtle borders, clean iconography, text-based action buttons"
+      },
+      "componentPlan": null,
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false
+    }
+  ],
+  "assets": [],
+  "wiringPlan": [],
+  "hiddenInteractionPlan": []
+}

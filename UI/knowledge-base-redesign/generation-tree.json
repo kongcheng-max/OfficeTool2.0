@@ -1,0 +1,25 @@
+{
+  "root": {
+    "nodeId": "gen-project-shell",
+    "kind": "project-shell",
+    "pageIds": ["page-knowledge-base"],
+    "output": "partials/project-shell.html",
+    "sharedRegions": ["sidebar", "topbar"],
+    "privateRegions": [],
+    "mutableSlots": ["activeNavItem", "pageTitle"],
+    "status": "planned",
+    "children": [
+      {
+        "nodeId": "gen-page-knowledge-base",
+        "kind": "page-leaf",
+        "pageIds": ["page-knowledge-base"],
+        "output": "pages/knowledge-base.html",
+        "sharedRegions": [],
+        "privateRegions": ["main content area with cards grid"],
+        "mutableSlots": ["activeNavItem", "pageTitle"],
+        "status": "planned",
+        "children": []
+      }
+    ]
+  }
+}
