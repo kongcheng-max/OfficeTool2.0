@@ -8,23 +8,28 @@ interface Props {
   index: number;
 }
 
+function formatRelevance(score: number) {
+  if (!Number.isFinite(score)) return '0%';
+  const percent = score <= 1 ? score * 100 : score;
+  const clamped = Math.min(100, Math.max(0, percent));
+  return `${clamped.toFixed(0)}%`;
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   vector: '向量',
   bm25: '关键词',
   kg: '图谱',
 };
 
-/** 证据链节点 —— 一处文档来源，挂在答案下方的时间线上 */
+/** 证据链节点：一处文档来源，挂在答案下方的时间线中 */
 const SourceReference: React.FC<Props> = ({ source, index }) => {
   const { mode } = useTheme();
   const colors = sourceColors[mode];
 
   return (
     <div className="ot-rise" style={{ ...cardStyle, animationDelay: `${0.25 + index * 0.12}s` }}>
-      {/* 时间线节点圆点 */}
       <span style={nodeDot} />
 
-      {/* 头部：文档名 + 相关度 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <span style={docIco}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
@@ -34,12 +39,11 @@ const SourceReference: React.FC<Props> = ({ source, index }) => {
         <span style={docName}>{source.document_name || '未知文档'}</span>
         {source.score != null && (
           <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, fontWeight: 500, color: 'var(--success)' }}>
-            相关度 {(source.score * 100).toFixed(0)}%
+            相关度 {formatRelevance(source.score)}
           </span>
         )}
       </div>
 
-      {/* 元信息标签：页码/块 + 检索路径 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
         {source.page != null && <span style={{ ...chip, background: 'var(--hover)', color: 'var(--ink-2)', fontFamily: 'var(--f-mono)' }}>p.{source.page}</span>}
         {source.chunk_index != null && <span style={{ ...chip, background: 'var(--hover)', color: 'var(--ink-2)', fontFamily: 'var(--f-mono)' }}>块 #{source.chunk_index}</span>}
@@ -53,7 +57,6 @@ const SourceReference: React.FC<Props> = ({ source, index }) => {
         })}
       </div>
 
-      {/* 摘录 */}
       {source.chunk_text && (
         <div style={excerpt}>{source.chunk_text}</div>
       )}

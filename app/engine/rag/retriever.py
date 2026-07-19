@@ -34,6 +34,10 @@ class Retriever:
     ) -> List[Dict]:
         """向量相似检索"""
         logger.info(f"向量检索: {query[:100]}...")
+        if self._embedder.__class__.__name__ == "DummyEmbedder":
+            logger.warning("Vector retrieval skipped because only DummyEmbedder is available")
+            return []
+
         query_vector = await self._embedder.embed_query(query)
 
         hits = self._store.search(

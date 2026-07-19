@@ -275,9 +275,10 @@ async def _retrieve(
                     from engine.rag.retriever import BM25Retriever
                     bm25 = BM25Retriever()
                     extra = await bm25.retrieve(v, kb_id=kb_id, top_k=5)
-                    for h in extra:
+                    for rank, h in enumerate(extra, 1):
                         k = _hit_key(h)
                         if k not in all_hits:
+                            h["rrf_score"] = round(1.0 / (60 + rank), 6)
                             all_hits[k] = h
                 except Exception:
                     pass  # BM25 不可用时跳过
@@ -291,7 +292,7 @@ async def _retrieve(
                 # 为 variant hits 补默认 rrf_score
                 for h in hits:
                     if "rrf_score" not in h:
-                        h["rrf_score"] = h.get("score", 0.0)
+                        h["rrf_score"] = 0.0
                 hits = await cross_encoder_rerank(question, hits, top_k=top_k)
                 logger.info(
                     f"Cross-encoder 精排完成: query='{question[:50]}...' "

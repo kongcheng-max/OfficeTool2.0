@@ -167,6 +167,12 @@ async def _bi_encoder_rerank(query: str, hits: List[Dict]) -> None:
         from engine.rag.embedder import create_embedder
 
         embedder = create_embedder(use_dummy_fallback=True)
+        if embedder.__class__.__name__ == "DummyEmbedder":
+            for hit in hits:
+                hit["rerank_score"] = hit.get("rrf_score", 0.0)
+            logger.info("Cross-encoder unavailable; keeping RRF order because only DummyEmbedder is available")
+            return
+
         query_vec = await embedder.embed_query(query)
         texts = [h.get("chunk_text", "") for h in hits]
         chunk_vecs = await embedder.embed(texts)

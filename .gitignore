@@ -23,6 +23,11 @@ build/
 *.pyc
 __pycache__/
 
+.venv/
+app/.venv/
+*.log
+*.err.log
+
 # Uploads (keep structure, ignore content)
 uploads/*
 !uploads/.gitkeep
@@ -38,3 +43,7 @@ deploy/testdata/
 验收准备材料/
 scripts/
 *.docx
+login_*.png
+step*.png
+s[0-9][0-9]_*.png
+error*.png
